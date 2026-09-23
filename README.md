@@ -2,7 +2,35 @@
 
 数字图像处理项目一：基于特征工程的动漫人脸检测与 28 点关键点回归。
 
-三位同学平等协作，先运行共同基础，再各自完善模块。**当前只有合成样例流程验证，尚未验证真实动漫数据效果。**
+三位同学平等协作，先运行共同基础，再各自完善模块。公共检测基础仍以合成样例验证为主；C模块已在真实AnimeFace裁剪图上完成教师预标注和临时回归训练，但未经人工修正的伪标签不能作为正式准确率。
+
+## C模块：28点关键点流程
+
+正式点序采用与HRNetV2教师一致的 `hysts28-v1`，见 [编号和修正规则](docs/LANDMARKS.md)。教师预标注不是真值，必须保留未审核状态；测试集只有人工逐张确认后才能报告NME。
+
+```powershell
+# 1. GPU预标注（需先按 requirements-prelabel.txt 准备教师环境）
+python -m scripts.prelabel_animeface --images data/raw/anime_faces/images `
+  --detector-source third_party/anime-face-detector `
+  --landmark-model models/pretrained/anime-face-detector-hrnetv2.safetensors `
+  --output data/landmarks/prelabels --device cuda:0 --limit 256
+
+# 2. 人工拖动修正；支持中断后继续
+python -m scripts.correct_landmarks --input data/landmarks/prelabels/manifest.json `
+  --output data/landmarks/corrected/manifest.json
+
+# 3. 单独训练和评价C模块
+python -m scripts.train_landmark --manifest data/landmarks/corrected/manifest.json `
+  --output models/landmark
+python -m scripts.evaluate_landmark --manifest data/landmarks/corrected/manifest.json `
+  --model models/landmark --output results/landmark-test
+
+# 4. 暂时没有B检测模型时，可传入一个或多个框演示
+python demo.py --image example.jpg --model-dir models/landmark `
+  --boxes-json example-boxes.json --output results/example.jpg
+```
+
+当前256张临时数据的验证集选择结果为每点2对像素差、三级更新、Ridge=10，已设为训练入口默认值；人工修正数据扩大后应重新选择。评价默认使用双眼中心距离；眼部可见点不足时回退到真值框对角线，结果文件会统计两种方法各自使用次数。`--allow-unreviewed` 只用于检查软件流程，不会把教师伪标签标成真实测试结果。
 
 ## 阅读入口
 
@@ -52,8 +80,9 @@ python demo.py --image data/example.jpg --model-dir models/baseline --output res
 |---|---|
 | A | `src/channels11.py`：整数通道；`src/data_io.py`：图像和清单；`src/detection_metrics.py`：检测指标 |
 | B | `src/depth2_tree.py`、`adaboost.py`、`cascade.py`：检测训练；`pyramid.py`、`sliding_window.py`、`grouping.py`：搜索与 NMS |
-| C | `src/shape_regression.py`：多级回归；`landmark_metrics.py`：NME；`detector.py`：统一接口；`demo.py`：结果图与 JSON |
+| C | `src/landmark_schema.py`：固定点序；`shape_regression.py`：多级回归；`landmark_metrics.py`：双眼/框归一化NME；`detector.py`：统一接口；`demo.py`：结果图与 JSON |
 | A 的入口 | `scripts/visualize_channels.py`：原图与 11 通道拼图 |
+| C 的入口 | `scripts/prelabel_animeface.py`、`correct_landmarks.py`、`train_landmark.py`、`evaluate_landmark.py` |
 | 共享入口 | `scripts/train_baseline.py`：训练两个模型；`scripts/smoke_test.py`：合成端到端检查 |
 | 共享测试 | `tests/test_contracts.py`：通道、树、指标和坐标接口验证 |
 | 协作文件 | `AGENTS.md`：Codex 阅读入口；`docs/`：老师要求、协作提示词、接口和进度 |

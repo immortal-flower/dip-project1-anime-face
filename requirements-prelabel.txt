@@ -1,0 +1,4 @@
+# Optional dependencies for scripts/prelabel_animeface.py.
+# Install a CUDA build of torch/torchvision that matches the local NVIDIA driver.
+safetensors>=0.4,<1
+huggingface-hub>=0.20,<2
