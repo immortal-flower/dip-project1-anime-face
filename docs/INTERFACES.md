@@ -21,7 +21,8 @@ load_manifest(path) 接收 UTF-8 JSON 数组，每条记录为一个标注区域
 
 - image 相对清单文件；source_id 表示原始图/页，同源裁剪不能跨 split。
 - split=train/val/test，label=1 人脸或 -1 背景。bbox 为图内整数坐标。
-- 关键点记录额外含 landmarks（28×2 有限数值数组）和 visibility（28 个 0/1）。点坐标属于原图，点序由编号说明固定。
+- 关键点记录额外含 landmarks（28×2 有限数值数组）、visibility（28 个 0/1）和 `landmark_order="hysts28-v1"`。点坐标属于原图，正式点序见 `docs/LANDMARKS.md`。
+- 教师输出保存 `annotation_status="model_prelabel_unreviewed"`；人工逐张确认后才可保存 `annotation_status="human_reviewed"` 和 `reviewed_landmarks=true`。真实 test 关键点指标拒绝未确认记录。
 - 老师原文用 `{x,y,visibility}` 点对象，导入时显式转换为上述内部格式，不能直接混用。
 - detection_samples 会裁剪并缩放为 24×24；训练不重新分配 split。
 - 本清单用于区域训练。正式全图评价需要每张原图的完整真值框集合，不能用一个裁剪标签代替整图真值。
@@ -37,15 +38,17 @@ train_cascade 使用训练集拟合，各级阈值取当前存活验证正样本
 ## C 回归与最终接口
 
 - predict_shape(model, gray, bbox) 返回原图坐标 28×2 数组。
-- 形状按框左上角及宽高归一化；仅可见点拟合，每个点至少一个可见训练样本。
+- 形状按框左上角及宽高归一化；仅可见点拟合，每个点至少一个可见训练样本。当前小样本验证选择每点2对局部像素差、三级更新、Ridge=10，具体值写入 config.json，正式人工数据到位后重新选择。
 - nme(prediction, truth, visibility, normalizer) 显式传入正归一化距离。全部不可见返回 None，汇总应剔除并记录数量。
+- nme_details 默认使用11–16与17–22号点的可见点均值计算双眼中心距离；任一眼不足两个可见点时回退到真值框对角线，并记录实际方法。
+- LandmarkRegressor(model_path).predict(bgr, boxes) 可绕过检测器对一个或多个给定框回归关键点；空框列表返回空列表。
 - AnimeFaceDetector(model_path) 接收模型目录，detect(bgr) 返回 `[{bbox,score,landmarks}]`，分数降序、原图坐标、无脸空列表、不弹窗。
 
 ## 模型导出
 
 - detector.json：候选通道/坐标、Stage 弱树/权重/阈值、训练种子和日志。
 - landmark.npz：平均形状、采样偏移和回归矩阵，不使用 pickle。
-- config.json：格式版本、窗口、通道取整/边界、金字塔、NMS、点数和 synthetic 标记。
+- config.json：格式版本、窗口、通道取整/边界、金字塔、NMS、点数、`landmark_order`、NME归一化规则和 synthetic 标记。
 - splits.json：图像、来源、划分、标签和 bbox。真实数据版本与内容校验待补。
 
 这套基础命名不同于老师建议目录；正式交付需补齐真实点序编号、数据说明和实验配置。
