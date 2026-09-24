@@ -6,6 +6,7 @@
 
 ## 阅读入口
 
+- [三人工作流程与 A / B / C 对接说明](docs/TEAM_WORKFLOW.md)：一起讨论项目顺序、数据依赖与阶段成果。
 - [给 Codex 的协作提示词与分工](docs/CODEX_COLLABORATION.md)
 - [接口约定](docs/INTERFACES.md)
 - [当前进度与限制](docs/STATUS.md)
