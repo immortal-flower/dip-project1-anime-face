@@ -6,10 +6,9 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-
 from src.data_io import load_manifest, write_image
+from src.detector import LandmarkRegressor
 from src.landmark_schema import validate_landmark_order
-from src.shape_regression import predict_shape
 
 
 def main() -> None:
@@ -22,8 +21,7 @@ def main() -> None:
     parser.add_argument("--scale", type=int, default=4)
     args = parser.parse_args()
 
-    with np.load(args.model) as archive:
-        model = {name: archive[name] for name in archive.files}
+    regressor = LandmarkRegressor(args.model)
     rows = [row for row in load_manifest(args.manifest)
             if row["split"] == args.split and "landmarks" in row]
     for row in rows:
@@ -34,12 +32,12 @@ def main() -> None:
     output.mkdir(parents=True, exist_ok=True)
     for index, row in enumerate(rows[:args.limit]):
         image = row["_image"].copy()
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        predicted = predict_shape(model, gray, row["bbox"])
+        predicted = np.asarray(regressor.predict(image, [row["bbox"]])[0]["landmarks"])
         teacher = np.asarray(row["landmarks"])
+        visible = np.asarray(row["visibility"], dtype=bool)
         image = cv2.resize(image, None, fx=args.scale, fy=args.scale,
                            interpolation=cv2.INTER_NEAREST)
-        for point in teacher:
+        for point in teacher[visible]:
             cv2.circle(image, tuple(np.rint(point * args.scale).astype(int)), 2,
                        (0, 220, 0), -1,
                        cv2.LINE_AA)

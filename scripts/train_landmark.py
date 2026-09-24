@@ -17,7 +17,7 @@ def train(manifest: str, output: str, rounds: int, ridge: float, seed: int,
           pairs_per_point: int) -> None:
     rows = list(load_manifest(manifest))
     train_rows = [r for r in rows if r["split"] == "train" and r["label"] == 1
-                  and "landmarks" in r]
+                  and "landmarks" in r and any(r["visibility"])]
     if not train_rows:
         raise ValueError("No positive training rows with landmarks")
     for row in [r for r in rows if "landmarks" in r]:
