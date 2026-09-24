@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import patch
 from pathlib import Path
 
+import cv2
 import numpy as np
 
 from scripts.correct_landmarks import nearest_landmark, validate_correction_row
@@ -11,6 +12,7 @@ from scripts.evaluate_landmark import evaluate
 from src.detector import LandmarkRegressor
 from src.landmark_metrics import interocular_distance, nme_details
 from src.landmark_schema import FLIP_PAIRS, LANDMARK_ORDER
+from src.hog_landmark import predict_hog_landmark, train_hog_landmark
 from src.shape_regression import train_shape
 
 
@@ -72,6 +74,43 @@ class LandmarkTests(unittest.TestCase):
         points = [np.full((28, 2), 10.0)]
         with self.assertRaises(ValueError):
             train_shape(images, [[0, 0, 20, 20]], points, [[2] * 28])
+
+    def test_hog_landmark_training_and_prediction(self):
+        images, points = [], []
+        for index in range(4):
+            image = np.zeros((32, 32, 3), dtype=np.uint8)
+            image[8:24, 8 + index:24 + index] = 80 + index * 30
+            images.append(image)
+            points.append(np.tile([16 + index / 2, 16], (28, 1)))
+        model = train_hog_landmark(images, [[0, 0, 32, 32]] * 4, points,
+                                   [[1] * 28] * 4, pca_dim=3, ridge=1)
+        prediction = predict_hog_landmark(model, images[0], [0, 0, 32, 32])
+        self.assertEqual(prediction.shape, (28, 2))
+        self.assertTrue(np.isfinite(prediction).all())
+
+    def test_hog_shape_ensemble_loading(self):
+        images = [np.full((32, 32, 3), 40 + index * 20, dtype=np.uint8)
+                  for index in range(4)]
+        points = [np.tile([14 + index, 16], (28, 1)) for index in range(4)]
+        boxes = [[0, 0, 32, 32]] * 4
+        visibility = [[1] * 28] * 4
+        hog = train_hog_landmark(images, boxes, points, visibility,
+                                 pca_dim=3, ridge=1)
+        shape = train_shape([cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                             for image in images], boxes, points, visibility,
+                            rounds=3, ridge=1, pairs_per_point=2)
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            archive = {f'hog_{key}': value for key, value in hog.items()}
+            archive.update({f'shape_{key}': value for key, value in shape.items()})
+            np.savez_compressed(directory / 'landmark.npz', **archive)
+            (directory / 'config.json').write_text(json.dumps({
+                'model_type': 'hog_shape_ensemble', 'hog_weight': 0.5,
+                'landmark_order': LANDMARK_ORDER,
+            }), encoding='utf-8')
+            result = LandmarkRegressor(directory).predict(images[0], boxes[:1])
+            self.assertEqual(np.asarray(result[0]['landmarks']).shape, (28, 2))
+            self.assertTrue(np.isfinite(result[0]['landmarks']).all())
 
     def test_test_evaluation_requires_human_review(self):
         row = dict(split='test', label=1, landmarks=np.zeros((28, 2)).tolist(),

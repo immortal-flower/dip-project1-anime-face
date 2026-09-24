@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 from .sliding_window import scan_image
 from .shape_regression import predict_shape
+from .hog_landmark import predict_hog_landmark
 from .landmark_schema import validate_landmark_order
 
 
@@ -29,7 +30,19 @@ class LandmarkRegressor:
 
     def predict(self, image, boxes):
         _validate_image(image)
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        model_type = self.config.get('model_type', 'shape_regression')
+        if model_type not in ('shape_regression', 'hog_ridge', 'hog_shape_ensemble'):
+            raise ValueError(f'Unsupported landmark model_type: {model_type}')
+        gray = (cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                if model_type in ('shape_regression', 'hog_shape_ensemble') else None)
+        if model_type == 'hog_shape_ensemble':
+            hog_model = {key[4:]: value for key, value in self.model.items()
+                         if key.startswith('hog_')}
+            shape_model = {key[6:]: value for key, value in self.model.items()
+                           if key.startswith('shape_')}
+            hog_weight = float(self.config.get('hog_weight', 0.5))
+            if not 0.0 <= hog_weight <= 1.0 or not hog_model or not shape_model:
+                raise ValueError('Invalid HOG/shape ensemble model')
         results = []
         for value in boxes:
             source = dict(value) if isinstance(value, dict) else {'bbox': value}
@@ -41,7 +54,14 @@ class LandmarkRegressor:
                 raise ValueError('Each bbox must stay inside the image')
             item = {key: val for key, val in source.items() if key != 'landmarks'}
             item['bbox'] = bbox.tolist()
-            item['landmarks'] = predict_shape(self.model, gray, bbox).tolist()
+            if model_type == 'hog_ridge':
+                prediction = predict_hog_landmark(self.model, image, bbox)
+            elif model_type == 'hog_shape_ensemble':
+                prediction = (hog_weight * predict_hog_landmark(hog_model, image, bbox)
+                              + (1.0 - hog_weight) * predict_shape(shape_model, gray, bbox))
+            else:
+                prediction = predict_shape(self.model, gray, bbox)
+            item['landmarks'] = prediction.tolist()
             results.append(item)
         return results
 
