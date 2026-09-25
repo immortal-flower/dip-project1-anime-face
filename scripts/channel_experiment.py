@@ -24,12 +24,14 @@ def run(manifest,output):
         raise FileExistsError('Use a new experiment output folder')
     records = []
     for item in samples:
-        gray = cv2.cvtColor(read_image(manifest.parent/item['image']),cv2.COLOR_BGR2GRAY)
+        original = read_image(manifest.parent/item['image'])
+        gray = cv2.cvtColor(original,cv2.COLOR_BGR2GRAY)
         integer = compute_11_channels(gray)
         quantized = compute_11_channels_float(gray,True)
         continuous = compute_11_channels_float(gray,False)
         folder=output/item['id']
-        write_image(folder/'grid.png',channel_grid(gray))
+        write_image(folder/'grid.png',channel_grid(gray,original=original))
+        write_image(folder/'original.png',original)
         write_image(folder/'gray.png',gray)
         details=[]
         for index,(plane,q,f,margin) in enumerate(zip(integer,quantized,continuous,MARGINS)):

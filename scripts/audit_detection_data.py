@@ -35,6 +35,13 @@ def audit(manifest,pages_path):
             if not (manifest.parent/row['source_image']).is_file():
                 issues.append(dict(image=row['image'],reason='missing_original'))
             forbidden=expanded_faces(page['bboxes'],page['width'],page['height'])
+            x1,y1,x2,y2=row['source_bbox']
+            if not (0 <= x1 < x2 <= page['width'] and 0 <= y1 < y2 <= page['height']):
+                issues.append(dict(image=row['image'],reason='source_crop_out_of_bounds'))
+            if row['label']==1:
+                truth=row.get('source_gt_bbox',row['source_bbox'])
+                if truth not in page['bboxes'] or not (x1<=truth[0]<truth[2]<=x2 and y1<=truth[1]<truth[3]<=y2):
+                    issues.append(dict(image=row['image'],reason='positive_ground_truth_mismatch'))
             if row['label']==-1 and any(intersects(row['source_bbox'],face) for face in forbidden):
                 issues.append(dict(image=row['image'],reason='negative_overlaps_face'))
         # 缩成24×24之后纹理还可能变弱；只列出待复核，不擅自删除样本。

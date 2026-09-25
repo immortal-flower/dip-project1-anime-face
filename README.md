@@ -6,6 +6,9 @@
 
 ## 阅读入口
 
+- [A 本轮工作记录](docs/A_WORK_LOG.md)：新增功能、发现的问题、数据版本和复现命令。
+- [A 报告初稿](docs/A_REPORT.md)：数据方法、特征原理、真实观察与实验边界。
+- [A 对照老师要求的遗漏核查](docs/A_REQUIREMENTS_AUDIT.md)：区分已经验证、尚未收尾和可选实验。
 - [A 从哪里开始读](docs/A_READING_GUIDE.md)：先看结果，再顺着样本、划分和通道读中文注释。
 - [十一通道观察与浮点对照](docs/CHANNEL_EXPERIMENT.md)：六张实际图像的观察、数值结果和复现方式。
 - [A 部分：数据位置、负样本与划分](docs/A_DATA_PREPARATION.md)：本地 Manga109/AnimeFace、首批检测样本及 C 标注对接。
@@ -25,6 +28,8 @@ cd dip-project1-anime-face
 uv venv .venv --python 3.10
 uv pip install -r requirements.txt
 ```
+
+2026-09-26 已在独立 Python 3.10.21 环境验证；如需匹配本轮 NumPy/OpenCV 版本，可改用 `uv pip install -r requirements-lock.txt`。本机 uv 位于 `results/tools/uv/bin/uv.exe`，环境记录在 `results/environment_a/`；这些本地目录不会随 Git 克隆。
 
 需要先安装 uv。Windows PowerShell 激活 `.venv\Scripts\Activate.ps1`；macOS/Linux 使用 `source .venv/bin/activate`。以下命令都在仓库根目录运行。
 
@@ -64,6 +69,8 @@ python demo.py --image data/example.jpg --model-dir models/baseline --output res
 | 协作文件 | `AGENTS.md`：Codex 阅读入口；`docs/`：老师要求、协作提示词、接口和进度 |
 
 基础模型导出为 detector.json、landmark.npz、config.json、splits.json。真实点序编号、数据说明和课程材料还需完善。
+
+模型现在还会导出 `feature_definition.json`，并在配置中记录通道版本和校验指纹。A 当前候选清单为 `data/processed/manga109_detection_v2_margin10/manifest_candidate.json`，尚未全量验收，不能直接作为最终数据发布；原版保留用于溯源。新工具及本地阶段包使用说明见 A_WORK_LOG。
 
 ## 日常协作
 

@@ -10,6 +10,7 @@
 - compute_11_channels(gray) 返回 11 张同尺寸 uint8 图，中间 int32。四值均值取 `(a+b+c+d+2)//4`，尚未与参考工程逐位对齐。
 - 仅完整依赖区域有效时计算，其他置零。C1、C2、C3–6、C7–10 的右/下无效宽度分别为 1、3、3、7。
 - 候选坐标暂限于 24×24 窗口左上 17×17，使所有通道依赖都在窗口内，保证裁剪训练与整图扫描一致。扩大时需按通道处理有效边界。
+- 完整通道定义保存在 `configs/feature_definition.json`，版本 `dip11-int-v1`。基础训练导出复制该文件并在config记录版本、文件名及SHA256；B独立训练入口也应同步保存定义，避免模型与特征版本混淆。
 - `compute_11_channels_float(gray, quantize=True)` 返回 11 张 float32 图，仅供实验。True 每一步同整数版取整；False 保留小数。B 的训练和推理继续使用整数版，不自动切换。
 
 ## 数据清单
@@ -26,6 +27,7 @@ load_manifest(path) 接收 UTF-8 JSON 数组，每条记录为一个标注区域
 - 老师原文用 `{x,y,visibility}` 点对象，导入时显式转换为上述内部格式，不能直接混用。
 - detection_samples 会裁剪并缩放为 24×24；训练不重新分配 split。
 - 本清单用于区域训练。正式全图评价需要每张原图的完整真值框集合，不能用一个裁剪标签代替整图真值。
+- v2正例的 `source_gt_bbox` 是原始XML真值，`source_bbox` 是扩边后的实际裁剪框，`bbox` 仍表示24×24训练窗口。`pages.json`的真值保持原始坐标，不随扩边改变。候选清单的 `needs_review` 不能解释为已经人工验收。
 
 ## B 检测输出
 
@@ -66,5 +68,6 @@ python -m scripts.evaluate_detection_results --pages data/processed/manga109_det
 - landmark.npz：平均形状、采样偏移和回归矩阵，不使用 pickle。
 - config.json：格式版本、窗口、通道取整/边界、金字塔、NMS、点数和 synthetic 标记。
 - splits.json：图像、来源、划分、标签和 bbox。真实数据版本与内容校验待补。
+- feature_definition.json：完整通道定义；config中新增feature_version、feature_definition_file、feature_definition_sha256。现有检测读取接口仍兼容，多出的配置不改变当前预测行为。
 
 这套基础命名不同于老师建议目录；正式交付需补齐真实点序编号、数据说明和实验配置。

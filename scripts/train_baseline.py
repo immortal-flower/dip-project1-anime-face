@@ -1,6 +1,7 @@
 # 共享训练入口：同一清单中同时需要检测正负样本和关键点标注，单有背景图片不足以运行。
 """Shared integration entry point; run from repo root with python -m."""
 import argparse
+import hashlib
 from pathlib import Path
 import cv2
 import numpy as np
@@ -23,9 +24,14 @@ def train(manifest, output, synthetic=False):
                            [r['visibility'] for r in landmark_rows])
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
+    # 随模型保存完整通道定义与指纹，避免队友加载时猜测取整／边界版本。
+    definition = (Path(__file__).resolve().parents[1]/'configs/feature_definition.json').read_bytes()
+    (output/'feature_definition.json').write_bytes(definition)
     write_json(output/'detector.json', model)
     np.savez_compressed(output/'landmark.npz', **landmark)
     write_json(output/'config.json', dict(schema_version=1, synthetic=synthetic,
+        feature_version='dip11-int-v1', feature_definition_file='feature_definition.json',
+        feature_definition_sha256=hashlib.sha256(definition).hexdigest(),
         window_size=[24, 24], num_channels=11, scale_factor=1.2, step=1, nms_threshold=0.3,
         landmark_count=28, seed=42, coordinate_convention='xyxy-exclusive',
         landmark_order='synthetic ellipse 0..27' if synthetic else 'manifest order; supply numbering diagram',

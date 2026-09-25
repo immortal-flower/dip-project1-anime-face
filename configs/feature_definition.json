@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "feature_version": "dip11-int-v1",
+  "input": "2D uint8 grayscale; BGR converted by OpenCV COLOR_BGR2GRAY",
+  "output": "list of 11 uint8 arrays, same height and width as input",
+  "intermediate_dtype": "int32",
+  "coordinate_convention": "array[y,x]; xyxy exclusive boxes",
+  "average_of_four": "floor((a+b+c+d+2)/4)",
+  "normalize_difference": "floor((delta+255)/2)",
+  "invalid_border": "zero when any required source pixel is outside full valid support",
+  "channels": [
+    {"id": 0, "operation": "identity", "source": "gray", "invalid_right_bottom": 0},
+    {"id": 1, "operation": "average4", "source": 0, "offsets_xy": [[0,0],[1,0],[0,1],[1,1]], "invalid_right_bottom": 1},
+    {"id": 2, "operation": "average4", "source": 1, "offsets_xy": [[0,0],[2,0],[0,2],[2,2]], "invalid_right_bottom": 3},
+    {"id": 3, "operation": "normalized_difference", "source": 1, "minuend_xy": [2,0], "subtrahend_xy": [0,0], "invalid_right_bottom": 3},
+    {"id": 4, "operation": "normalized_difference", "source": 1, "minuend_xy": [0,2], "subtrahend_xy": [0,0], "invalid_right_bottom": 3},
+    {"id": 5, "operation": "normalized_difference", "source": 1, "minuend_xy": [2,2], "subtrahend_xy": [0,0], "invalid_right_bottom": 3},
+    {"id": 6, "operation": "normalized_difference", "source": 1, "minuend_xy": [0,2], "subtrahend_xy": [2,0], "invalid_right_bottom": 3},
+    {"id": 7, "operation": "normalized_difference", "source": 2, "minuend_xy": [4,0], "subtrahend_xy": [0,0], "invalid_right_bottom": 7},
+    {"id": 8, "operation": "normalized_difference", "source": 2, "minuend_xy": [0,4], "subtrahend_xy": [0,0], "invalid_right_bottom": 7},
+    {"id": 9, "operation": "normalized_difference", "source": 2, "minuend_xy": [4,4], "subtrahend_xy": [0,0], "invalid_right_bottom": 7},
+    {"id": 10, "operation": "normalized_difference", "source": 2, "minuend_xy": [0,4], "subtrahend_xy": [4,0], "invalid_right_bottom": 7}
+  ],
+  "detector_window": [24,24],
+  "current_shared_valid_sampling_region": [0,0,17,17],
+  "note": "Inference uses the integer implementation; floating variants are experiment-only. This is not a claim of bitwise identity with an external reference project."
+}

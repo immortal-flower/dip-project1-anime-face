@@ -42,6 +42,26 @@ def expanded_faces(faces, width, height, margin=.15):
             for x1, y1, x2, y2 in faces]
 
 
+def positive_crop_box(face, width, height, margin=.10, other_faces=()):
+    """正例四周扩边；有新邻脸进入时逐次减半，原标注框始终不变。
+
+    margin 是相对于原框宽高的每侧比例，不是老师指定常数。
+    原框已经重叠的邻脸单独留给质量复核，不能靠缩小框悄悄裁掉。
+    """
+    if not np.isfinite(margin) or not 0 <= margin <= .5:
+        raise ValueError('Positive margin must be finite and in [0,0.5]')
+    if not (0 <= face[0] < face[2] <= width and 0 <= face[1] < face[3] <= height):
+        raise ValueError('Face must be an in-bounds xyxy box')
+    new_neighbors = [box for box in other_faces if not intersects(face, box)]
+    effective = margin
+    for _ in range(8):
+        crop = expanded_faces([face], width, height, effective)[0]
+        if not any(intersects(crop, box) for box in new_neighbors):
+            return crop, effective
+        effective /= 2
+    return list(face), 0.0
+
+
 # 随机找有纹理的方框，排除人脸及周边，返回原图坐标下的背景框。
 def sample_background(gray, faces, rng, count=6, margin=.15):
     height, width = gray.shape
