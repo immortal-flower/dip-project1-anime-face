@@ -6,24 +6,37 @@
 
 | 内容 | 路径 |
 |---|---|
-| AnimeFace 原图 | `data/raw/animeface/images/` |
+| AnimeFace 原图 | `data/animeface/images/` |
 | AnimeFace 读取与完全重复检查 | `data/inspection/animeface/` |
-| Manga109 压缩包 | `data/Manga109_released_2026_05_21.zip` |
-| Manga109 实际数据根目录 | `data/Manga109_released_2026_05_21/Manga109_released_2026_05_21/` |
+| Manga109 压缩包 | 已不在仓库 data 中；重新校验时传入实际 ZIP 路径 |
+| Manga109 实际数据根目录 | `data/Manga109_released_2026_05_21/` |
 | Manga109 解压完整性记录 | `data/inspection/manga109/archive_verification.json` |
 | 首批检测样本与划分 | `data/processed/manga109_detection_v1/` |
 
-Manga109 有两层同名文件夹，目前可以正常使用，无需为了整理而移动。给脚本的根目录应直接包含 `annotations/` 和 `images/`。只使用本版的 `annotations/`，不要混用 `annotations.v2020...` 等旧标注。
+2026-09-25 已按用户整理后的目录更新：AnimeFace 去掉 raw 层，Manga109 去掉重复的同名外层。给脚本的根目录应直接包含 `annotations/` 和 `images/`。只使用本版的 `annotations/`，不要混用 `annotations.v2020...` 等旧标注。
+
+```text
+data/
+├── animeface/images/
+├── Manga109_released_2026_05_21/
+│   ├── annotations/
+│   ├── images/
+│   └── books.txt
+├── inspection/
+└── processed/manga109_detection_v1/
+```
 
 ## 解压核验
 
 2026-09-25 检查：Manga109 压缩包的 11,149 个普通文件已完整解压，逐文件大小与 CRC 校验全部通过。其中 `images/` 包含 10,602 个图像文件；漫画双页图文件数不等于单页计数。
 
 ```powershell
-python -m scripts.verify_dataset_archive --archive data/Manga109_released_2026_05_21.zip --destination data/Manga109_released_2026_05_21 --report data/inspection/manga109/archive_verification.json
+python -m scripts.verify_dataset_archive --archive "实际压缩包路径.zip" --destination data --report data/inspection/manga109/archive_verification_new.json
 ```
 
-如果有缺失文件，可加 `--extract-missing`。该选项只补缺失文件，已有但不一致的文件会报告异常而不是覆盖。当前文件已齐全，无需重复解压。读取压缩包不需要先移动压缩包或处理 WPS 文件关联。
+上面的压缩包路径是占位符，需要替换为真实文件位置。ZIP 内部本身包含一层 `Manga109_released_2026_05_21/`，因此当前目录结构下 `--destination` 应为 `data`，不要再传数据集根目录，否则会重复嵌套。旧 CRC 记录保留为迁移前的历史验证，不表示迁移后重新读取了 ZIP。
+
+如果有缺失文件，可加 `--extract-missing`。该选项只补缺失文件，已有但不一致的文件会报告异常而不是覆盖。读取压缩包不需要先移动压缩包或处理 WPS 文件关联。
 
 AnimeFace 之前已检查 63,565 张图全部可读，按解码后像素内容识别出 41,522 个唯一图像和 22,043 个重复副本。原图仍全部保留；这只是完全重复检查，不代表近似重复或来源分组已完成。
 
@@ -32,10 +45,12 @@ AnimeFace 之前已检查 63,565 张图全部可读，按解码后像素内容�
 生成命令（输出目录必须为空或不存在，以保护已有划分与复核结果）：
 
 ```powershell
-python -m scripts.prepare_manga_detection_data --root data/Manga109_released_2026_05_21/Manga109_released_2026_05_21 --output data/processed/manga109_detection_v1
+python -m scripts.prepare_manga_detection_data --root data/Manga109_released_2026_05_21 --output data/processed/manga109_detection_v2
 ```
 
 规则：
+
+已有 v1 数据可直接使用，上面以 v2 示范重新生成时的新输出位置；目录迁移不需要重新生成样本或随机划分。
 
 - 固定种子 42，先按书／系列分组再划分。能够从名称识别的 `volNN` 分卷归入同组，防止同系列不同卷跨集合；其他书名作为独立组，语义上同系列但命名不同的情况仍需核对。
 - 109 本书识别为 104 组，约 75%/10%/15% 分到 train/val/test。按组分配后，实际书本数及样本比例不会恰好等于该比例。
@@ -87,5 +102,7 @@ python -m scripts.prepare_manga_detection_data --root data/Manga109_released_202
 ## 验证与仓库范围
 
 9 项现有与新增单元测试通过；6,460 个样本全部可读取，3,924 个负样本均不与扩展的人脸标注相交；样本划分与整页划分一致，没有同来源或相同裁剪像素跨集合。
+
+目录迁移后已修复 `manifest.json` 的 6,460 个原图引用及 `pages.json` 的 654 个整页引用。标注内容指纹、样本标签、坐标和集合分配保持一致。迁移前清单备份及更新记录保存在本地 `data/inspection/path_migration_20260925_backup/` 和 `path_migration_20260925.json`。
 
 原始图片、采样图片、标注副本和预览均留在被 Git 忽略的 `data/`。代码与说明可随 A 分支协作，Manga109 数据不进入公开仓库。

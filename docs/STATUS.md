@@ -3,12 +3,13 @@
 ## 2026-09-25：A 模块首批检测数据
 
 - 已同步 origin/main，取得尚未合入 main 的 origin/feature/landmarks-demo；A 工作在 feature/data-preparation 分支。
-- Manga109 11,149 个解压文件逐项 CRC 校验通过。AnimeFace 原图位于 data/raw/animeface/images。
+- Manga109 11,149 个解压文件逐项 CRC 校验通过。当前 AnimeFace 原图位于 data/animeface/images，Manga109 根目录为单层 data/Manga109_released_2026_05_21。
 - 新增可复现的按书／系列划分与负样本准备脚本：109 本书、104 组、654 页，得到 2,536 个正样本和 3,924 个负样本；固定清单在本地 data/processed/manga109_detection_v1。
 - 负样本避开扩展 15% 后的人脸标注，过滤近空白图；每条保留来源和原图框，另输出整页完整人脸框清单。
 - 9 项单元测试及全部样本读取、负样本几何排除、来源/像素跨集合检查通过。仍待人工复核，尚未进行真实模型训练。
 - C 分支记录了 256 张预标注及临时划分；用户告知标注已完成，待拿到实际最新清单核对复核状态与重复图。AnimeFace 的最终联合划分尚未完成，不重做 C 标注。
 - 详情、运行命令、样本数量和后续交接见 A_DATA_PREPARATION.md。
+- 同日目录整理后，修复 6,460 个样本原图引用和 654 个整页引用，保持已有划分、标签和坐标；本地检查记录及 AnimeFace 导入脚本路径同步更新。
 
 ## 2026-09-16：共同基础版
 
