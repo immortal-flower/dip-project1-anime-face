@@ -6,6 +6,7 @@
 
 ## 阅读入口
 
+- [A 部分：数据位置、负样本与划分](docs/A_DATA_PREPARATION.md)：本地 Manga109/AnimeFace、首批检测样本及 C 标注对接。
 - [三人工作流程与 A / B / C 对接说明](docs/TEAM_WORKFLOW.md)：一起讨论项目顺序、数据依赖与阶段成果。
 - [给 Codex 的协作提示词与分工](docs/CODEX_COLLABORATION.md)
 - [接口约定](docs/INTERFACES.md)
