@@ -2,10 +2,12 @@
 
 数字图像处理项目一：基于特征工程的动漫人脸检测与 28 点关键点回归。
 
-三位同学平等协作，先运行共同基础，再各自完善模块。**当前只有合成样例流程验证，尚未验证真实动漫数据效果。**
+三位同学平等协作，先运行共同基础，再各自完善模块。已准备首批 Manga109 样本并完成六张图的通道观察；**模型完整流程仍仅有合成样例验证，尚未验证真实动漫数据检测与回归效果。**
 
 ## 阅读入口
 
+- [A 从哪里开始读](docs/A_READING_GUIDE.md)：先看结果，再顺着样本、划分和通道读中文注释。
+- [十一通道观察与浮点对照](docs/CHANNEL_EXPERIMENT.md)：六张实际图像的观察、数值结果和复现方式。
 - [A 部分：数据位置、负样本与划分](docs/A_DATA_PREPARATION.md)：本地 Manga109/AnimeFace、首批检测样本及 C 标注对接。
 - [三人工作流程与 A / B / C 对接说明](docs/TEAM_WORKFLOW.md)：一起讨论项目顺序、数据依赖与阶段成果。
 - [给 Codex 的协作提示词与分工](docs/CODEX_COLLABORATION.md)
@@ -55,9 +57,10 @@ python demo.py --image data/example.jpg --model-dir models/baseline --output res
 | A | `src/channels11.py`：整数通道；`src/data_io.py`：图像和清单；`src/detection_metrics.py`：检测指标 |
 | B | `src/depth2_tree.py`、`adaboost.py`、`cascade.py`：检测训练；`pyramid.py`、`sliding_window.py`、`grouping.py`：搜索与 NMS |
 | C | `src/shape_regression.py`：多级回归；`landmark_metrics.py`：NME；`detector.py`：统一接口；`demo.py`：结果图与 JSON |
-| A 的入口 | `scripts/visualize_channels.py`：原图与 11 通道拼图 |
+| A 的数据入口 | `scripts/prepare_manga_detection_data.py`：采样和划分；`audit_detection_data.py`：一致性检查；`review_detection_samples.py` / `apply_sample_review.py`：人工复核和导出 |
+| A 的实验入口 | `scripts/prepare_channel_examples.py`：准备观察图；`channel_experiment.py`：批量通道与浮点对照；`visualize_channels.py`：单图拼图；`evaluate_detection_results.py`：汇总 B 的整页检测结果 |
 | 共享入口 | `scripts/train_baseline.py`：训练两个模型；`scripts/smoke_test.py`：合成端到端检查 |
-| 共享测试 | `tests/test_contracts.py`：通道、树、指标和坐标接口验证 |
+| 测试 | `tests/test_contracts.py`：基础接口；`test_data_preparation.py`：采样与划分；`test_a_workflow.py`：通道对照、整集指标与复核导出 |
 | 协作文件 | `AGENTS.md`：Codex 阅读入口；`docs/`：老师要求、协作提示词、接口和进度 |
 
 基础模型导出为 detector.json、landmark.npz、config.json、splits.json。真实点序编号、数据说明和课程材料还需完善。

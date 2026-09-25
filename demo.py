@@ -1,3 +1,4 @@
+# 演示入口：读输入图、调用检测与回归、绘制结果，并输出 JSON。
 import argparse
 from pathlib import Path
 import cv2
@@ -5,6 +6,7 @@ from src.data_io import read_image, write_image, write_json
 from src.detector import AnimeFaceDetector
 
 
+# 命令行入口：读取参数、调用主要处理函数，并将结果保存到指定位置。
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--image', required=True)

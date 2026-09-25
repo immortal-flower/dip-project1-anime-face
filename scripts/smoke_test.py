@@ -1,3 +1,4 @@
+# 共享连接检查：生成合成图案来验证程序，不代表真实动漫检测效果。
 """Synthetic integration check only; never report as anime-face performance."""
 import argparse
 from pathlib import Path
@@ -9,6 +10,7 @@ from src.landmark_metrics import nme
 from .train_baseline import train
 
 
+# 命令行入口：读取参数、调用主要处理函数，并将结果保存到指定位置。
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--output-dir', default='results/smoke')

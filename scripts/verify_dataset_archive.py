@@ -1,3 +1,4 @@
+# A 的解压检查工具：比较大小与 CRC，发现不一致就报告，避免覆盖已有数据。
 """Verify extracted files against ZIP CRCs; optionally extract missing files only."""
 import argparse
 import json
@@ -7,6 +8,7 @@ import zipfile
 import zlib
 
 
+# 对照压缩包逐项校验已解压文件；可补缺失项，不覆盖内容不同的已有项。
 def verify(archive, destination, extract_missing=False):
     base = Path(destination).resolve()
     missing, mismatched, extracted = [], [], []
@@ -40,6 +42,7 @@ def verify(archive, destination, extract_missing=False):
                 ok=not missing and not mismatched)
 
 
+# 命令行入口：读取参数、调用主要处理函数，并将结果保存到指定位置。
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--archive', required=True)

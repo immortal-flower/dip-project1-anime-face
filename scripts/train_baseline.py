@@ -1,3 +1,4 @@
+# 共享训练入口：同一清单中同时需要检测正负样本和关键点标注，单有背景图片不足以运行。
 """Shared integration entry point; run from repo root with python -m."""
 import argparse
 from pathlib import Path
@@ -8,6 +9,7 @@ from src.cascade import train_cascade
 from src.shape_regression import train_shape
 
 
+# 串联检测与关键点训练，保存模型、配置、划分记录和是否合成数据的标记。
 def train(manifest, output, synthetic=False):
     rows = list(load_manifest(manifest))
     patches, labels = detection_samples(rows, 'train')
@@ -32,6 +34,7 @@ def train(manifest, output, synthetic=False):
     print(f'Model saved: {output}; synthetic={synthetic}')
 
 
+# 命令行入口：读取参数、调用主要处理函数，并将结果保存到指定位置。
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--manifest', required=True)

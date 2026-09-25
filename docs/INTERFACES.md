@@ -10,6 +10,7 @@
 - compute_11_channels(gray) 返回 11 张同尺寸 uint8 图，中间 int32。四值均值取 `(a+b+c+d+2)//4`，尚未与参考工程逐位对齐。
 - 仅完整依赖区域有效时计算，其他置零。C1、C2、C3–6、C7–10 的右/下无效宽度分别为 1、3、3、7。
 - 候选坐标暂限于 24×24 窗口左上 17×17，使所有通道依赖都在窗口内，保证裁剪训练与整图扫描一致。扩大时需按通道处理有效边界。
+- `compute_11_channels_float(gray, quantize=True)` 返回 11 张 float32 图，仅供实验。True 每一步同整数版取整；False 保留小数。B 的训练和推理继续使用整数版，不自动切换。
 
 ## 数据清单
 
@@ -33,6 +34,24 @@ scan_image(bgr, detector_model, config) 返回 (predictions, logs)。predictions
 score 是各通过阶段 AdaBoost 分数裕量之和，不是概率。logs 当前记录各层尺寸、窗口数、各级通过数、候选数和总耗时，逐阶段耗时与误拒/误放待补。
 
 train_cascade 使用训练集拟合，各级阈值取当前存活验证正样本最低分。基础版保召回但没有目标误报率控制。
+
+## A 的整集检测评价
+
+`evaluate_dataset(pages, predictions, threshold=0.5)` 中 pages 为含 `page_id`、`bboxes` 的整页记录列表；predictions 为以实际 page_id 为键的 JSON 对象：
+
+```json
+{"实际page_id": [{"bbox": [10, 20, 50, 60], "score": 1.2}], "另一实际page_id": []}
+```
+
+坐标为原图 xyxy，分数越高越先匹配；无检测明确写空列表。预测框和真值框必须具有有限坐标与正面积，score 为有限数值。每个预测匹配当前未匹配真值中 IoU 最高且不低于阈值的一个框，真值最多匹配一次；重复检测算 FP。
+
+先逐页匹配，再累计 TP/FP/FN 计算 micro Precision、Recall、F1，不对每页 F1 求平均。分母为零时对应指标为 0。遗漏预测页按空检测计入并列入 `missing_prediction_pages`，避免只统计有结果的图片；未知 page_id 报错。正式报告应先核查遗漏列表，区分无检测与未运行。
+
+```powershell
+python -m scripts.evaluate_detection_results --pages data/processed/manga109_detection_v1/pages.json --predictions results/test_predictions.json --split test --output results/detection_test_metrics.json
+```
+
+`test_predictions.json` 需要由 B 真实运行后生成，只包含选定集合的 page_id；不要填模拟框冒充实验结果。评估使用整页全部标注，不能使用少量采样正例的框作为全部真值。
 
 ## C 回归与最终接口
 

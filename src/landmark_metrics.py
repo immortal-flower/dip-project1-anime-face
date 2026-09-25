@@ -1,6 +1,8 @@
+# C 的共同基础版：只评价可见点，由调用方明确提供归一化距离。
 import numpy as np
 
 
+# 计算可见点平均定位误差，再除以归一化距离；无可见点时返回 None。
 def nme(prediction, truth, visibility, normalizer):
     """Caller specifies eye-center distance or explicitly documented bbox diagonal."""
     p, t = np.asarray(prediction), np.asarray(truth)

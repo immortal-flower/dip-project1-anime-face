@@ -1,3 +1,4 @@
+# 基础合同测试：用已知答案验证坐标、通道、匹配和弱树行为。
 import unittest
 import numpy as np
 from src.channels11 import compute_11_channels
@@ -10,6 +11,7 @@ from src.cascade import sample_features
 
 
 class ContractTests(unittest.TestCase):
+    # 验证同一区域单独裁剪和放在整图中计算的有效特征一致。
     def test_crop_and_full_image_features_agree(self):
         gray = np.random.default_rng(19).integers(0, 256, (48, 60), dtype=np.uint8)
         full = compute_11_channels(gray)
@@ -17,6 +19,7 @@ class ContractTests(unittest.TestCase):
         features = [[c, x, y, 16, 16] for c in range(11) for x in range(17) for y in range(17)]
         np.testing.assert_array_equal(sample_features(full, features, 13, 9), sample_features(crop, features))
 
+    # 用逐像素公式作为独立参考，检查向量化切片、边界与整数取整。
     def test_channels_against_scalar_reference(self):
         gray = np.random.default_rng(7).integers(0, 256, (13, 15), dtype=np.uint8)
         expected = [gray.copy()] + [np.zeros_like(gray) for _ in range(10)]
@@ -34,6 +37,7 @@ class ContractTests(unittest.TestCase):
             np.testing.assert_array_equal(actual, reference)
         self.assertTrue(all(c.shape == (1, 1) for c in compute_11_channels(np.zeros((1, 1), np.uint8))))
 
+    # 两个预测重复命中一张脸只能算一个 TP；其余算误检。
     def test_matching_and_nms(self):
         box = [0, 0, 10, 10]
         self.assertEqual(iou(box, [10, 0, 20, 10]), 0)
@@ -42,12 +46,14 @@ class ContractTests(unittest.TestCase):
         self.assertEqual((result['tp'], result['fp'], result['fn']), (1, 1, 0))
         self.assertEqual(len(nms(predictions)), 1)
 
+    # XOR 需要两层判断，用来确认实现并非只有单个决策桩。
     def test_tree_can_express_xor(self):
         x = np.array([[0,0], [0,1], [1,0], [1,1]])
         y = np.array([-1, 1, 1, -1])
         tree = fit_tree(x, y, np.ones(4)/4)
         np.testing.assert_array_equal(predict_tree(tree, x), y)
 
+    # 检查不可见点不影响 NME，以及归一化点能正确还原到原图。
     def test_landmark_mask_and_coordinates(self):
         truth = np.zeros((28, 2))
         prediction = np.full((28, 2), 100.0)
