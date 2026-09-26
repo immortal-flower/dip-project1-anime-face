@@ -2,6 +2,8 @@
 
 最新版本：`data/processed/manga109_detection_v2_margin10/` 保留原样本身份和划分，加入正例扩边；其中 `manifest_candidate.json` 隔离53张已知问题后保留6407张，仍待最终验收。v1保留用于历史溯源，下文初始数量不变。新版方法、逐项问题和运行命令见 [A_WORK_LOG.md](A_WORK_LOG.md)。
 
+C已交付256张，现已接入 `data/processed/joint_a_c_v1/`；253张通过格式及边界检查，与漫画候选合并为6660条。原C点与split未修改，3张越界例单列。见 [C_DATA_INTEGRATION.md](C_DATA_INTEGRATION.md)。下文C分支快照是交付前的历史信息。
+
 ## 本地数据位置
 
 以下路径相对仓库根目录，数据只保存在本地：

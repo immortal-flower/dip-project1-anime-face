@@ -7,6 +7,7 @@
 ## 阅读入口
 
 - [A 本轮工作记录](docs/A_WORK_LOG.md)：新增功能、发现的问题、数据版本和复现命令。
+- [C 标注接入与联合数据](docs/C_DATA_INTEGRATION.md)：256张交付、3个边界例、6660条联合候选和划分注册表。
 - [A 报告初稿](docs/A_REPORT.md)：数据方法、特征原理、真实观察与实验边界。
 - [A 对照老师要求的遗漏核查](docs/A_REQUIREMENTS_AUDIT.md)：区分已经验证、尚未收尾和可选实验。
 - [A 从哪里开始读](docs/A_READING_GUIDE.md)：先看结果，再顺着样本、划分和通道读中文注释。
@@ -71,6 +72,8 @@ python demo.py --image data/example.jpg --model-dir models/baseline --output res
 基础模型导出为 detector.json、landmark.npz、config.json、splits.json。真实点序编号、数据说明和课程材料还需完善。
 
 模型现在还会导出 `feature_definition.json`，并在配置中记录通道版本和校验指纹。A 当前候选清单为 `data/processed/manga109_detection_v2_margin10/manifest_candidate.json`，尚未全量验收，不能直接作为最终数据发布；原版保留用于溯源。新工具及本地阶段包使用说明见 A_WORK_LOG。
+
+C交付已经接入；当前联合入口为 `data/processed/joint_a_c_v1/joint_manifest_candidate.json`。只做关键点模块可读取同目录 `landmarks_validated.json`。这两个文件仍是本地数据，不会随Git下载；所有原C标注均保留，3张可见点越界例另列待确认。
 
 ## 日常协作
 
