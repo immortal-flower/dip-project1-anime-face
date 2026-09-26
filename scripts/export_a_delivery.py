@@ -31,8 +31,7 @@ def export(repo,dataset,channels,output,joint=None):
         if upstream.exists():
             target=output/upstream.relative_to(repo);target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(upstream,target)
     shutil.copytree(channels,output/'results'/channels.name)
-    if channels.name!='channel_experiment_v1' and (repo/'results/channel_experiment_v1').exists():
-        shutil.copytree(repo/'results/channel_experiment_v1',output/'results/channel_experiment_v1')
+    # 只交付显式选择的最新版通道结果，避免重新带入已归档的旧实验。
     for folder in ('quality_review_v2','near_duplicates_manga_v2','near_duplicates_anime_v1','environment_a','c_integration'):
         if (repo/'results'/folder).exists(): shutil.copytree(repo/'results'/folder,output/'results'/folder)
     for name in ('a_data_audit_v2.json','crop_version_validation.json','channel_principles.json'):
@@ -46,7 +45,7 @@ def export(repo,dataset,channels,output,joint=None):
         '原图复核前可读取 data/processed/'+dataset.name+'/manifest_candidate.json 进行接口实验；'
         '该清单仍为 needs_review，不能把数据筛选结果冒充最终测试准确率。\n\n'
         + ('本包另外包含C的256张交付图像及原标注副本、253张通过格式和边界检查的清单，以及联合候选清单。'
-           '请读 docs/C_DATA_INTEGRATION.md 和 C_ANNOTATION_FEEDBACK.md；3张越界例单列，未擅自修改。\n\n' if joint else '本包不含C标注。\n\n') +
+           '请读 docs/C_DATA_INTEGRATION.md 和 docs/C_ANNOTATION_FEEDBACK.md；3张越界例单列，未擅自修改。\n\n' if joint else '本包不含C标注。\n\n') +
         'SHA256SUMS.json 记录包内内容，可逐文件核验。本包只生成在本地，公开Git仓库不含图像数据。\n',encoding='utf-8')
     records=[]
     for path in sorted(output.rglob('*')):

@@ -50,7 +50,7 @@ train_cascade 使用训练集拟合，各级阈值取当前存活验证正样本
 先逐页匹配，再累计 TP/FP/FN 计算 micro Precision、Recall、F1，不对每页 F1 求平均。分母为零时对应指标为 0。遗漏预测页按空检测计入并列入 `missing_prediction_pages`，避免只统计有结果的图片；未知 page_id 报错。正式报告应先核查遗漏列表，区分无检测与未运行。
 
 ```powershell
-python -m scripts.evaluate_detection_results --pages data/processed/manga109_detection_v1/pages.json --predictions results/test_predictions.json --split test --output results/detection_test_metrics.json
+python -m scripts.evaluate_detection_results --pages data/processed/manga109_detection_v2_margin10/pages.json --predictions results/test_predictions.json --split test --output results/detection_test_metrics.json
 ```
 
 `test_predictions.json` 需要由 B 真实运行后生成，只包含选定集合的 page_id；不要填模拟框冒充实验结果。评估使用整页全部标注，不能使用少量采样正例的框作为全部真值。

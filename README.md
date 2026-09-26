@@ -6,6 +6,8 @@
 
 ## 阅读入口
 
+- **[A 当前文件入口](docs/A_CURRENT_FILES.md)**：最新版数据、结果、交接包和旧产物归档位置。
+
 - [A 本轮工作记录](docs/A_WORK_LOG.md)：新增功能、发现的问题、数据版本和复现命令。
 - [C 标注接入与联合数据](docs/C_DATA_INTEGRATION.md)：256张交付、3个边界例、6660条联合候选和划分注册表。
 - [A 报告初稿](docs/A_REPORT.md)：数据方法、特征原理、真实观察与实验边界。
@@ -34,7 +36,9 @@ uv pip install -r requirements.txt
 
 需要先安装 uv。Windows PowerShell 激活 `.venv\Scripts\Activate.ps1`；macOS/Linux 使用 `source .venv/bin/activate`。以下命令都在仓库根目录运行。
 
-## 先检查完整流程
+## 可选：检查共享接口
+
+日常A工作直接从上面的最新文件入口开始。以下合成示例用于排查接口问题，旧输出已归档，运行时会重新生成；共享脚本继续保留。
 
 ```bash
 python -m unittest discover -s tests -v

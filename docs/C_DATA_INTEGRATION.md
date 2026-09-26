@@ -64,7 +64,7 @@ python -m scripts.integrate_c_landmarks --manifest data/processed/animeface/huma
 包含C数据的新阶段包可用：
 
 ```powershell
-python -m scripts.export_a_delivery --dataset data/processed/manga109_detection_v2_margin10 --channels results/channel_experiment_v2_color --joint data/processed/joint_a_c_v1 --output results/a_delivery_with_c_20260926
+python -m scripts.export_a_delivery --dataset data/processed/manga109_detection_v2_margin10 --channels results/channel_experiment_v2_color --joint data/processed/joint_a_c_v1 --output results/a_delivery_latest
 ```
 
 测试已增加可见点越界不被截断、间接近似关系跨集合检测、C原字段保留与联合副本导出，当前共19项测试通过。原JSON的SHA256为 `b421c252260c2a5008f2524f720e5560da8a06d913b3b9e332f5862efbcb4c9e`，本轮结束前再次核对。
