@@ -55,6 +55,11 @@ def load_manifest(path):
             visible = np.asarray(row['visibility'])
             if points.shape != (28, 2) or not np.isfinite(points).all() or visible.shape != (28,) or not np.isin(visible, [0, 1]).all():
                 raise ValueError('Expected 28 finite xy landmarks and 28 visibility flags')
+            if 'landmark_weights' in row:
+                weights = np.asarray(row['landmark_weights'], dtype=float)
+                if (weights.shape != (28,) or not np.isfinite(weights).all()
+                        or np.any((weights < 0) | (weights > 1))):
+                    raise ValueError('Expected 28 landmark weights between 0 and 1')
         row = dict(row)
         row['_image'] = image
         yield row
