@@ -2,13 +2,17 @@
 
 数字图像处理项目一：基于特征工程的动漫人脸检测与 28 点关键点回归。
 
-三位同学平等协作，先运行共同基础，再各自完善模块。已准备首批 Manga109 样本并完成六张图的通道观察；**模型完整流程仍仅有合成样例验证，尚未验证真实动漫数据检测与回归效果。**
+三位同学平等协作，先运行共同基础，再各自完善模块。B 已完成真实三级 Cascade、两轮困难负样本、步长/尺度消融、完整 60 页 validation 阈值选择和 108 页 test 检测评价；关键点真实效果及全项目报告整合仍由团队继续完成。
 
 ## 阅读入口
 
 - **[A 当前文件入口](docs/A_CURRENT_FILES.md)**：最新版数据、结果、交接包和旧产物归档位置。
 
 - [A 本轮工作记录](docs/A_WORK_LOG.md)：新增功能、发现的问题、数据版本和复现命令。
+- [B 工作记录](docs/B_WORK_LOG.md)：Cascade、困难负样本挖掘、视觉复核与复现命令。
+- [B 困难负样本重训对比](docs/B_RETRAIN_COMPARISON.md)：同参数重训的逐 Stage 条件/累计误报率及负结果结论。
+- [B 最终实验报告](docs/B_FINAL_REPORT.md)：训练、困难负样本、消融、完整 test 指标和局限。
+- [B 提交与参考目录](docs/B_SUBMISSION_INDEX.md)：GitHub 文件、本地模型/结果和复现入口。
 - [C 标注接入与联合数据](docs/C_DATA_INTEGRATION.md)：256张交付、3个边界例、6660条联合候选和划分注册表。
 - [A 报告初稿](docs/A_REPORT.md)：数据方法、特征原理、真实观察与实验边界。
 - [A 对照老师要求的遗漏核查](docs/A_REQUIREMENTS_AUDIT.md)：区分已经验证、尚未收尾和可选实验。
@@ -60,6 +64,41 @@ python demo.py --image data/example.jpg --model-dir models/baseline --output res
 
 基础训练入口使用 train 训练、val 校准阈值；test 不参与。它不负责下载数据、人工修正或正式测试集评估。
 
+### B：Cascade 目标控制与困难负样本挖掘
+
+检测训练现支持每级目标召回率、目标误报率和弱分类器上限；负样本被耗尽时安全早停，不再重复使用已淘汰训练池。模型中的 `training_log` 保存每 Stage 的训练/验证输入、通过、误拒、误放、阈值、耗时及阈值校准轨迹。
+
+```bash
+python -m scripts.train_baseline \
+  --manifest data/processed/joint_a_c_v1/joint_manifest_candidate.json \
+  --output models/baseline-region-v1 \
+  --stages 3 --max-weak-trees 20 --target-recall 0.995 --target-fpr 0.5 \
+  --candidates 512 --seed 42
+
+python -m scripts.mine_hard_negatives \
+  --manifest data/processed/joint_a_c_v1/joint_manifest_candidate.json \
+  --pages data/processed/manga109_detection_v2_margin10/pages.json \
+  --model-dir models/baseline-region-v1 \
+  --output results/hard-negatives/round-1 \
+  --round 1 --score-threshold 0 --max-face-iou 0.3 \
+  --step 12 --scale-factor 1.5 --pre-nms-limit 500
+
+python -m scripts.review_hard_negatives \
+  --manifest results/hard-negatives/round-1/mined_manifest.json \
+  --pages data/processed/manga109_detection_v2_margin10/pages.json \
+  --output results/hard-negatives/round-1/review
+
+python -m scripts.evaluate_page_detector \
+  --pages data/processed/manga109_detection_v2_margin10/pages.json \
+  --model-dir models/baseline-region-c1024 \
+  --output results/b-final/test-full-108pages.json \
+  --split test --max-pages 108 --step 6 --scale-factor 1.3 \
+  --nms-threshold 0.3 --pre-nms-limit 500 --iou-threshold 0.5 \
+  --score-threshold 13.853865092499843
+```
+
+困难负样本脚本只扫描 `pages.json` 的 train 页，排除与已标注脸框重叠的检测，并输出候选图、增强清单、至少六例可视化画廊和逐页日志。复核脚本生成候选裁剪与原页上下文对照页；决定文件必须逐项覆盖，只有 `accepted` 项能写入最终增强清单。A 的阶段交接包只含 24×24 区域样本及原页索引；本机已另外补齐并验证 `data/Manga109_released_2026_05_21`。其他环境缺少原页时，脚本会在写输出前明确报错，不能用区域裁剪冒充整页挖掘。整页评价保存清单/模型 SHA256、逐页预测、扫描日志和 P/R/F1；最终 test 已覆盖 108/108 页且遗漏列表为空。真实模型效果有限，完整指标和局限见 [B 最终实验报告](docs/B_FINAL_REPORT.md)。
+
 ## 实际代码框架
 
 | 模块 | 文件与职责 |
@@ -69,7 +108,7 @@ python demo.py --image data/example.jpg --model-dir models/baseline --output res
 | C | `src/shape_regression.py`：多级回归；`landmark_metrics.py`：NME；`detector.py`：统一接口；`demo.py`：结果图与 JSON |
 | A 的数据入口 | `scripts/prepare_manga_detection_data.py`：采样和划分；`audit_detection_data.py`：一致性检查；`review_detection_samples.py` / `apply_sample_review.py`：人工复核和导出 |
 | A 的实验入口 | `scripts/prepare_channel_examples.py`：准备观察图；`channel_experiment.py`：批量通道与浮点对照；`visualize_channels.py`：单图拼图；`evaluate_detection_results.py`：汇总 B 的整页检测结果 |
-| 共享入口 | `scripts/train_baseline.py`：训练两个模型；`scripts/smoke_test.py`：合成端到端检查 |
+| 共享入口 | `scripts/train_baseline.py`：训练两个模型；`scripts/mine_hard_negatives.py`：挖掘原页困难负样本；`scripts/evaluate_page_detector.py`：固定整页子集运行与评价；`scripts/smoke_test.py`：合成端到端检查 |
 | 测试 | `tests/test_contracts.py`：基础接口；`test_data_preparation.py`：采样与划分；`test_a_workflow.py`：通道对照、整集指标与复核导出 |
 | 协作文件 | `AGENTS.md`：Codex 阅读入口；`docs/`：老师要求、协作提示词、接口和进度 |
 
