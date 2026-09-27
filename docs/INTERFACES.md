@@ -33,9 +33,13 @@ load_manifest(path) 接收 UTF-8 JSON 数组，每条记录为一个标注区域
 
 scan_image(bgr, detector_model, config) 返回 (predictions, logs)。predictions 为按 score 降序、已 NMS 的 `{bbox,score}` 列表，原图坐标，无脸空列表。
 
-score 是各通过阶段 AdaBoost 分数裕量之和，不是概率。logs 当前记录各层尺寸、窗口数、各级通过数、候选数和总耗时，逐阶段耗时与误拒/误放待补。
+score 是各通过阶段 AdaBoost 分数裕量之和，不是概率。logs 记录各金字塔层尺寸、窗口数、候选数和总耗时，并为每个 Stage 记录 evaluated、passed、rejected、seconds 和平均窗口耗时。`config.scan_batch_size` 控制等价的 NumPy 分批扫描，默认 4096；可选 `config.pre_nms_limit` 在全局 NMS 前只保留最高分的 N 个候选，避免弱模型大量候选触发二次复杂度失控。可选 `config.score_threshold` 在 NMS 后执行统一分数过滤，必须只用 validation 选择；末层 `scan_summary` 记录原始数、截断数、NMS 前后数量及分数过滤后数量。误拒/误放需要带真值的训练或评价日志计算，不能只从无标签扫描窗口推断。
 
-train_cascade 使用训练集拟合，各级阈值取当前存活验证正样本最低分。基础版保召回但没有目标误报率控制。
+`train_cascade` 使用 train 拟合弱分类器，只用 val 校准阈值。每一级在弱树前缀中选择同时满足 `target_recall` 和 `target_false_positive_rate` 的最短前缀；若上限内不能满足，记录 `best_available_within_limit`，而不是伪称达标。训练/验证存活池只会逐级缩小；任一必需类别耗尽或一级未减少负样本时安全早停，不重用完整训练池。`training_log` 记录每级阈值、校准轨迹、训练/验证输入与通过数、误拒、误放和耗时，`training_summary` 记录全局停止原因。
+
+`train_cascade(..., sample_weights=...)` 可传入正有限训练样本权重；共享训练入口用 `--hard-negative-weight` 只提高 `hard_negative=true` 项的初始 AdaBoost 权重，默认 1 不改变原行为。权重实验必须保持同一验证集并同时报告召回，不能只用训练困难样本拒绝率选模型。
+
+`scripts.mine_hard_negatives` 的输入必须同时包含区域训练清单和整页 `pages.json`。它只扫描 train 页，保留得分达标且与该页全部真值框最大 IoU 不超过阈值的检测，输出 24×24、label=-1、split=train 的候选。每条候选保留 `page_id`、`origin_bbox`、检测分数、IoU、轮次和待人工复核状态；同一 page_id/origin_bbox 跨轮去重。输出包括 `mined_manifest.json`、可直接继续训练的 `augmented_manifest.json`、`gallery.png` 和 `mining_summary.json`。原页缺失时必须预检失败，不能退化为扫描区域样本。
 
 ## A 的整集检测评价
 
