@@ -21,7 +21,7 @@ load_manifest(path) 接收 UTF-8 JSON 数组，每条记录为一个标注区域
 
 - image 相对清单文件；source_id 表示原始图/页，同源裁剪不能跨 split。
 - split=train/val/test，label=1 人脸或 -1 背景。bbox 为图内整数坐标。
-- 关键点记录额外含 landmarks（28×2 有限数值数组）、visibility（28 个 0/1）和 `landmark_order="hysts28-v1"`。点坐标属于原图，正式点序见 `docs/LANDMARKS.md`。
+- 关键点记录额外含 landmarks（28×2 有限数值数组）、visibility（28 个 0/1）和 `landmark_order="hysts28-v1"`。点坐标属于原图，正式点序见 `docs/LANDMARKS.md`。进阶 Fern/LBF 训练可选 `landmark_weights`（28 个 0～1 置信度）；实际损失权重为 `visibility × landmark_weights`，因此不可见点始终为 0。
 - 教师输出保存 `annotation_status="model_prelabel_unreviewed"`；人工逐张确认后才可保存 `annotation_status="human_reviewed"` 和 `reviewed_landmarks=true`。真实 test 关键点指标拒绝未确认记录。
 - 老师原文用 `{x,y,visibility}` 点对象，导入时显式转换为上述内部格式，不能直接混用。
 - detection_samples 会裁剪并缩放为 24×24；训练不重新分配 split。
@@ -42,6 +42,7 @@ train_cascade 使用训练集拟合，各级阈值取当前存活验证正样本
 - nme(prediction, truth, visibility, normalizer) 显式传入正归一化距离。全部不可见返回 None，汇总应剔除并记录数量。
 - nme_details 默认使用11–16与17–22号点的可见点均值计算双眼中心距离；任一眼不足两个可见点时回退到真值框对角线，并记录实际方法。
 - LandmarkRegressor(model_path).predict(bgr, boxes) 可绕过检测器对一个或多个给定框回归关键点；空框列表返回空列表。
+- `model_type="lbf_fern"` 使用形状索引像素差、Fern 二值叶节点、LBF one-hot 特征和逐点可见性加权 Ridge，支持 3～5 级更新；仍通过相同的 `LandmarkRegressor` 接口推理。
 - AnimeFaceDetector(model_path) 接收模型目录，detect(bgr) 返回 `[{bbox,score,landmarks}]`，分数降序、原图坐标、无脸空列表、不弹窗。
 
 ## 模型导出

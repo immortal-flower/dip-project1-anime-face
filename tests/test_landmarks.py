@@ -13,6 +13,7 @@ from src.detector import LandmarkRegressor
 from src.landmark_metrics import interocular_distance, nme_details
 from src.landmark_schema import FLIP_PAIRS, LANDMARK_ORDER
 from src.hog_landmark import predict_hog_landmark, train_hog_landmark
+from src.lbf_landmark import predict_lbf_landmark, train_lbf_landmark
 from src.shape_regression import train_shape
 
 
@@ -111,6 +112,45 @@ class LandmarkTests(unittest.TestCase):
             result = LandmarkRegressor(directory).predict(images[0], boxes[:1])
             self.assertEqual(np.asarray(result[0]['landmarks']).shape, (28, 2))
             self.assertTrue(np.isfinite(result[0]['landmarks']).all())
+
+    def test_fern_lbf_weighted_training_and_loading(self):
+        images, points, weights = [], [], []
+        boxes = [[0, 0, 32, 32]] * 6
+        for index in range(6):
+            image = np.zeros((32, 32), dtype=np.uint8)
+            image[7:25, 7 + index % 3:25 + index % 3] = 70 + index * 20
+            images.append(image)
+            points.append(np.tile([15 + index / 3, 16], (28, 1)))
+            confidence = np.ones(28)
+            confidence[index % 28] = 0.25
+            weights.append(confidence)
+        model = train_lbf_landmark(
+            images, boxes, points, [[1] * 28] * 6,
+            landmark_weights=weights, rounds=3, ferns_per_point=1,
+            fern_depth=2, ridge=2, learning_rate=0.5)
+        prediction = predict_lbf_landmark(model, images[0], boxes[0])
+        self.assertEqual(prediction.shape, (28, 2))
+        self.assertTrue(np.isfinite(prediction).all())
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            np.savez_compressed(directory / 'landmark.npz', **model)
+            (directory / 'config.json').write_text(json.dumps({
+                'model_type': 'lbf_fern', 'landmark_order': LANDMARK_ORDER,
+            }), encoding='utf-8')
+            bgr = cv2.cvtColor(images[0], cv2.COLOR_GRAY2BGR)
+            loaded = LandmarkRegressor(directory).predict(bgr, boxes[:1])
+            np.testing.assert_allclose(loaded[0]['landmarks'], prediction,
+                                       rtol=1e-5, atol=1e-5)
+
+    def test_fern_lbf_rejects_missing_point_weight(self):
+        images = [np.zeros((20, 20), dtype=np.uint8)] * 3
+        points = [np.full((28, 2), 10.0)] * 3
+        visibility = np.ones((3, 28))
+        visibility[:, 4] = 0
+        with self.assertRaisesRegex(ValueError, 'positive training weight'):
+            train_lbf_landmark(images, [[0, 0, 20, 20]] * 3, points,
+                               visibility, rounds=3, ferns_per_point=1,
+                               fern_depth=2)
 
     def test_test_evaluation_requires_human_review(self):
         row = dict(split='test', label=1, landmarks=np.zeros((28, 2)).tolist(),

@@ -25,6 +25,10 @@ python -m scripts.train_landmark --manifest data/landmarks/corrected/manifest.js
 # 可选的HOG+PCA+Ridge特征工程对照模型
 python -m scripts.train_hog_landmark --manifest data/landmarks/corrected/manifest.json `
   --output models/landmark-hog --pca-dim 128 --ridge 10
+# 进阶Fern/LBF：形状索引像素差、二值叶节点和可见点加权损失
+python -m scripts.train_lbf_landmark --manifest data/landmarks/corrected/manifest.json `
+  --output models/landmark-lbf --rounds 4 --ferns-per-point 3 `
+  --fern-depth 4 --ridge 10 --learning-rate 0.5
 # 验证集选择出的最终模型：HOG与形状回归各占50%
 python -m scripts.train_landmark_ensemble --manifest data/landmarks/corrected/manifest.json `
   --output models/landmark-ensemble
@@ -36,7 +40,7 @@ python demo.py --image example.jpg --model-dir models/landmark-ensemble `
   --boxes-json example-boxes.json --output results/example.jpg
 ```
 
-当前256张数据按192/26/38固定划分，并已逐张人工确认。验证集选择HOG与形状回归各占50%的融合模型；使用190张至少含一个可见点的训练图片，验证集NME为0.0718，人工测试集平均/中位NME为0.0864/0.0794，PCK@0.10为69.03%。单独HOG和基础形状回归的测试NME分别为0.0941和0.0977。评价默认使用双眼中心距离；测试集中37张采用双眼归一化，1张因眼部可见点不足回退到真值框对角线。`--allow-unreviewed` 只用于检查软件流程，不会把教师伪标签标成真实测试结果。
+当前256张数据按192/26/38固定划分，并已逐张人工确认。验证集选择HOG与形状回归各占50%的融合模型；使用190张至少含一个可见点的训练图片，验证集NME为0.0718，人工测试集平均/中位NME为0.0864/0.0794，PCK@0.10为69.03%。单独HOG、基础形状回归和进阶Fern/LBF的测试NME分别为0.0941、0.0977和0.1050。Fern/LBF已完整实现并支持连续可见性置信度，但当前小数据上过拟合，因此保留为进阶对比，正式Demo仍采用验证集更优的融合模型。评价默认使用双眼中心距离；测试集中37张采用双眼归一化，1张因眼部可见点不足回退到真值框对角线。`--allow-unreviewed` 只用于检查软件流程，不会把教师伪标签标成真实测试结果。
 
 ## 阅读入口
 
@@ -86,9 +90,9 @@ python demo.py --image data/example.jpg --model-dir models/baseline --output res
 |---|---|
 | A | `src/channels11.py`：整数通道；`src/data_io.py`：图像和清单；`src/detection_metrics.py`：检测指标 |
 | B | `src/depth2_tree.py`、`adaboost.py`、`cascade.py`：检测训练；`pyramid.py`、`sliding_window.py`、`grouping.py`：搜索与 NMS |
-| C | `src/landmark_schema.py`：固定点序；`shape_regression.py`：多级回归；`hog_landmark.py`：HOG+PCA+Ridge；`landmark_metrics.py`：双眼/框归一化NME；`detector.py`：统一接口；`demo.py`：结果图与 JSON |
+| C | `src/landmark_schema.py`：固定点序；`shape_regression.py`：多级回归；`hog_landmark.py`：HOG+PCA+Ridge；`lbf_landmark.py`：Fern/LBF与可见点加权；`landmark_metrics.py`：双眼/框归一化NME；`detector.py`：统一接口；`demo.py`：结果图与 JSON |
 | A 的入口 | `scripts/visualize_channels.py`：原图与 11 通道拼图 |
-| C 的入口 | `scripts/prelabel_animeface.py`、`correct_landmarks.py`、`train_landmark.py`、`train_hog_landmark.py`、`train_landmark_ensemble.py`、`evaluate_landmark.py` |
+| C 的入口 | `scripts/prelabel_animeface.py`、`correct_landmarks.py`、`train_landmark.py`、`train_hog_landmark.py`、`train_lbf_landmark.py`、`train_landmark_ensemble.py`、`evaluate_landmark.py` |
 | 共享入口 | `scripts/train_baseline.py`：训练两个模型；`scripts/smoke_test.py`：合成端到端检查 |
 | 共享测试 | `tests/test_contracts.py`：通道、树、指标和坐标接口验证 |
 | 协作文件 | `AGENTS.md`：Codex 阅读入口；`docs/`：老师要求、协作提示词、接口和进度 |
