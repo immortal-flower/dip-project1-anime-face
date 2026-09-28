@@ -2,7 +2,7 @@
 
 数字图像处理项目一：基于特征工程的动漫人脸检测与 28 点关键点回归。
 
-三位同学平等协作，先运行共同基础，再各自完善模块。B 已完成真实三级 Cascade、困难负样本、消融和完整整页评价；C 已完成256张人工复核、基础形状回归、HOG融合、Fern/LBF和人工测试集评价。`integration/b-c` 分支已把两套代码接入统一端到端接口，真实联合运行仍需B同学共享被Git忽略的冻结模型包。
+三位同学平等协作，先运行共同基础，再各自完善模块。B 已完成真实三级 Cascade、困难负样本、消融和完整整页评价；C 已完成256张人工复核、基础形状回归、HOG融合、Fern/LBF和人工测试集评价。`integration/b-c` 分支已把两套代码接入统一端到端接口；B 的冻结模型包现已收录在 `deliverables/b-final-model.zip`，可恢复到本地后运行真实联合评价。
 
 ## 阅读入口
 
@@ -15,6 +15,7 @@
 - [B 提交与参考目录](docs/B_SUBMISSION_INDEX.md)：GitHub 文件、本地模型/结果和复现入口。
 - [B+C联合运行说明](docs/BC_INTEGRATION.md)：分开加载模型、缺失文件和端到端评价命令。
 - [C 28点编号与修正规则](docs/LANDMARKS.md)：`hysts28-v1` 点序、左右映射和可见性规则。
+- [B → C 检测器交接说明](docs/B_TO_C_HANDOFF.md)：冻结检测器、关键点模型接入方式、评价协议和 C 后续清单；完整模型包见 [`deliverables/b-final-model.zip`](deliverables/b-final-model.zip)。
 - [C 标注接入与联合数据](docs/C_DATA_INTEGRATION.md)：256张交付、3个边界例、6660条联合候选和划分注册表。
 - [A 报告初稿](docs/A_REPORT.md)：数据方法、特征原理、真实观察与实验边界。
 - [A 对照老师要求的遗漏核查](docs/A_REQUIREMENTS_AUDIT.md)：区分已经验证、尚未收尾和可选实验。
