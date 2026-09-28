@@ -174,3 +174,9 @@ results = detector.detect(bgr)
 4. 使用的 `feature_definition.json` SHA256 必须与 `config.json` 一致。
 5. 不要把 `score` 当作概率，也不要在 test 上重新选择阈值。
 6. 若统一接口能运行但 NME 异常，先分别用真实框和检测框测试 `predict_shape`，确认问题来自回归器还是检测框偏移。
+
+## 8. C 已返回的首轮端到端结果
+
+C 报告 38 张 AnimeFace test 上检测 TP/FP/FN=3/7/35；oracle bbox 的 38 张平均 NME=0.0864，检测框仅 3 张达到 IoU≥0.5且这三张平均 NME=0.1281；同时满足 IoU≥0.5 和 NME≤0.10 的为 2/38=5.26%。
+
+这些指标证明接口已接通，也说明完整系统受检测覆盖率限制。由于 C 的 bbox 是整张裁剪头像范围、B 的 bbox 是局部脸框，后续必须先在 validation 上拆解候选召回、分数过滤、NMS和框尺度差异。详细记录见 `docs/BC_END_TO_END_FEEDBACK.md`；在 C 提供逐图 JSON、模型与评价脚本哈希前，汇总值标记为待产物复核。

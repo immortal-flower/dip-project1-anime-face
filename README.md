@@ -14,6 +14,7 @@
 - [B 最终实验报告](docs/B_FINAL_REPORT.md)：训练、困难负样本、消融、完整 test 指标和局限。
 - [B 提交与参考目录](docs/B_SUBMISSION_INDEX.md)：GitHub 文件、本地模型/结果和复现入口。
 - [B → C 检测器交接说明](docs/B_TO_C_HANDOFF.md)：冻结检测器、关键点模型接入方式、评价协议和 C 后续清单；完整模型包见 [`deliverables/b-final-model.zip`](deliverables/b-final-model.zip)。
+- [B–C 端到端评价反馈](docs/BC_END_TO_END_FEEDBACK.md)：38 张 AnimeFace 的 oracle/detected NME、5.26% 端到端成功率、框定义差异及后续 validation 诊断顺序。
 - [C 标注接入与联合数据](docs/C_DATA_INTEGRATION.md)：256张交付、3个边界例、6660条联合候选和划分注册表。
 - [A 报告初稿](docs/A_REPORT.md)：数据方法、特征原理、真实观察与实验边界。
 - [A 对照老师要求的遗漏核查](docs/A_REQUIREMENTS_AUDIT.md)：区分已经验证、尚未收尾和可选实验。

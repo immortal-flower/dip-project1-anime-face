@@ -4,7 +4,7 @@
 
 B 已完成老师要求的检测训练链路：11 通道像素差特征、Depth-2 弱树、AdaBoost、多阶段 Cascade、逐 Stage 早拒绝日志、图像金字塔、滑窗、NMS、训练页困难负样本挖掘与复核、重训练对比、步长/尺度实验，以及冻结模型后的完整 test 评价。实现不调用深度检测模型。
 
-本报告只说明 B 检测模块。C 的真实关键点 NME、端到端 28 点效果和团队最终报告仍需由全组整合。
+本报告主体说明 B 检测模块。C 后续报告了 38 张 AnimeFace test 的 oracle/detected 关键点结果和端到端成功率；指标及框定义可比性限制见 `BC_END_TO_END_FEEDBACK.md`。团队最终报告仍需结合 C 的原始逐图产物复核。
 
 ## 2. 数据与固定协议
 
@@ -86,3 +86,9 @@ B 的实现和真实实验闭环已完成，所有失败结果均保留。1024 �
 - 本地冻结模型：`results/b-final/model/`
 - 本地完整逐页结果：`results/b-final/test-full-108pages.json`
 - 本地典型图：`results/b-final/examples/examples-sheet.png`
+
+## 11. C 的端到端反馈
+
+C 报告在 38 张 AnimeFace test 图上检测 TP/FP/FN=3/7/35，只有 3/38 张满足 IoU≥0.5。oracle bbox 下 38/38 张平均 NME=0.0864；检测框下可评价 3/38 张，这三张平均 NME=0.1281；同时满足 IoU≥0.5 和 NME≤0.10 的只有 2/38 张，端到端成功率为 5.26%。
+
+当前工作区没有 C 的逐图 JSON 和评价脚本，因此这些数值记录为 C 已报告、待产物复核。AnimeFace 标注框是整张裁剪头像范围，而 B 学习的是 Manga109 页面中的局部人脸框，IoU 结果同时包含跨域泛化和框语义差异。不能使用这 38 张 test 继续选择阈值或框扩张参数；完整分析与 validation 诊断顺序见 `BC_END_TO_END_FEEDBACK.md`。
