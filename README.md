@@ -2,7 +2,7 @@
 
 数字图像处理项目一：基于特征工程的动漫人脸检测与 28 点关键点回归。
 
-三位同学平等协作，先运行共同基础，再各自完善模块。B 已完成真实三级 Cascade、两轮困难负样本、步长/尺度消融、完整 60 页 validation 阈值选择和 108 页 test 检测评价；关键点真实效果及全项目报告整合仍由团队继续完成。
+三位同学平等协作，先运行共同基础，再各自完善模块。B 已完成真实三级 Cascade、困难负样本、消融和完整整页评价；C 已完成256张人工复核、基础形状回归、HOG融合、Fern/LBF和人工测试集评价。`integration/b-c` 分支已把两套代码接入统一端到端接口，真实联合运行仍需B同学共享被Git忽略的冻结模型包。
 
 ## 阅读入口
 
@@ -13,6 +13,8 @@
 - [B 困难负样本重训对比](docs/B_RETRAIN_COMPARISON.md)：同参数重训的逐 Stage 条件/累计误报率及负结果结论。
 - [B 最终实验报告](docs/B_FINAL_REPORT.md)：训练、困难负样本、消融、完整 test 指标和局限。
 - [B 提交与参考目录](docs/B_SUBMISSION_INDEX.md)：GitHub 文件、本地模型/结果和复现入口。
+- [B+C联合运行说明](docs/BC_INTEGRATION.md)：分开加载模型、缺失文件和端到端评价命令。
+- [C 28点编号与修正规则](docs/LANDMARKS.md)：`hysts28-v1` 点序、左右映射和可见性规则。
 - [C 标注接入与联合数据](docs/C_DATA_INTEGRATION.md)：256张交付、3个边界例、6660条联合候选和划分注册表。
 - [A 报告初稿](docs/A_REPORT.md)：数据方法、特征原理、真实观察与实验边界。
 - [A 对照老师要求的遗漏核查](docs/A_REQUIREMENTS_AUDIT.md)：区分已经验证、尚未收尾和可选实验。
@@ -99,20 +101,41 @@ python -m scripts.evaluate_page_detector \
 
 困难负样本脚本只扫描 `pages.json` 的 train 页，排除与已标注脸框重叠的检测，并输出候选图、增强清单、至少六例可视化画廊和逐页日志。复核脚本生成候选裁剪与原页上下文对照页；决定文件必须逐项覆盖，只有 `accepted` 项能写入最终增强清单。A 的阶段交接包只含 24×24 区域样本及原页索引；本机已另外补齐并验证 `data/Manga109_released_2026_05_21`。其他环境缺少原页时，脚本会在写输出前明确报错，不能用区域裁剪冒充整页挖掘。整页评价保存清单/模型 SHA256、逐页预测、扫描日志和 P/R/F1；最终 test 已覆盖 108/108 页且遗漏列表为空。真实模型效果有限，完整指标和局限见 [B 最终实验报告](docs/B_FINAL_REPORT.md)。
 
+### C：28点训练与B+C联合运行
+
+C使用256张逐张人工复核的AnimeFace裁剪图，固定划分192/26/38；190张至少含一个可见点的图片用于监督训练。验证集选择的HOG与局部像素差形状回归各50%融合模型，人工test平均NME为0.0864；Fern/LBF进阶模型test NME为0.1050，因此保留为对比而不替换最终模型。
+
+```powershell
+# B冻结模型与C冻结模型分开存放，不再要求复制到同一目录
+python demo.py --image data/example.jpg `
+  --model-dir results/b-final/model `
+  --landmark-model-dir models/landmark-ensemble-human-reviewed `
+  --output results/end-to-end/example.jpg
+
+# 在带人工28点的固定test上，同时报告检出率和匹配框内NME
+python -m scripts.evaluate_end_to_end_landmarks `
+  --manifest data/landmarks/corrected/manifest.json `
+  --detector-model results/b-final/model `
+  --landmark-model models/landmark-ensemble-human-reviewed `
+  --output results/end-to-end/test
+```
+
+`demo.py`输出检测框、分数、28点和扫描日志。联合评价只对IoU达到阈值的检测计算关键点NME，同时报告TP/FP/FN，防止漏检图片从关键点统计中消失。B最终test召回率只有0.0483，因此联合效果预计受检测器限制，报告时必须把“标注框NME”和“检测框端到端结果”分开。
+
 ## 实际代码框架
 
 | 模块 | 文件与职责 |
 |---|---|
 | A | `src/channels11.py`：整数通道；`src/data_io.py`：图像和清单；`src/detection_metrics.py`：检测指标 |
 | B | `src/depth2_tree.py`、`adaboost.py`、`cascade.py`：检测训练；`pyramid.py`、`sliding_window.py`、`grouping.py`：搜索与 NMS |
-| C | `src/shape_regression.py`：多级回归；`landmark_metrics.py`：NME；`detector.py`：统一接口；`demo.py`：结果图与 JSON |
+| C | `src/landmark_schema.py`：固定点序；`shape_regression.py`：多级局部像素差回归；`hog_landmark.py`：HOG+PCA+Ridge；`lbf_landmark.py`：Fern/LBF及可见点加权；`landmark_metrics.py`：NME；`detector.py`：统一接口 |
 | A 的数据入口 | `scripts/prepare_manga_detection_data.py`：采样和划分；`audit_detection_data.py`：一致性检查；`review_detection_samples.py` / `apply_sample_review.py`：人工复核和导出 |
 | A 的实验入口 | `scripts/prepare_channel_examples.py`：准备观察图；`channel_experiment.py`：批量通道与浮点对照；`visualize_channels.py`：单图拼图；`evaluate_detection_results.py`：汇总 B 的整页检测结果 |
-| 共享入口 | `scripts/train_baseline.py`：训练两个模型；`scripts/mine_hard_negatives.py`：挖掘原页困难负样本；`scripts/evaluate_page_detector.py`：固定整页子集运行与评价；`scripts/smoke_test.py`：合成端到端检查 |
+| C与共享入口 | `scripts/train_landmark.py`、`train_hog_landmark.py`、`train_lbf_landmark.py`、`train_landmark_ensemble.py`：C训练；`evaluate_end_to_end_landmarks.py`：B+C联合评价；`demo.py`：结果图与JSON；`scripts/smoke_test.py`：合成端到端检查 |
 | 测试 | `tests/test_contracts.py`：基础接口；`test_data_preparation.py`：采样与划分；`test_a_workflow.py`：通道对照、整集指标与复核导出 |
 | 协作文件 | `AGENTS.md`：Codex 阅读入口；`docs/`：老师要求、协作提示词、接口和进度 |
 
-基础模型导出为 detector.json、landmark.npz、config.json、splits.json。真实点序编号、数据说明和课程材料还需完善。
+基础模型可放在同一目录；真实交付推荐把B的 `detector.json/config.json` 与C的 `landmark.npz/config.json` 分开保存，通过 `--landmark-model-dir` 显式连接，避免两个模块的config互相覆盖。
 
 模型现在还会导出 `feature_definition.json`，并在配置中记录通道版本和校验指纹。A 当前候选清单为 `data/processed/manga109_detection_v2_margin10/manifest_candidate.json`，尚未全量验收，不能直接作为最终数据发布；原版保留用于溯源。新工具及本地阶段包使用说明见 A_WORK_LOG。
 

@@ -9,7 +9,7 @@ import numpy as np
 
 from scripts.correct_landmarks import nearest_landmark, validate_correction_row
 from scripts.evaluate_landmark import evaluate
-from src.detector import LandmarkRegressor
+from src.detector import AnimeFaceDetector, LandmarkRegressor
 from src.landmark_metrics import interocular_distance, nme_details
 from src.landmark_schema import FLIP_PAIRS, LANDMARK_ORDER
 from src.hog_landmark import predict_hog_landmark, train_hog_landmark
@@ -69,6 +69,32 @@ class LandmarkTests(unittest.TestCase):
             np.testing.assert_allclose(result[1]['landmarks'], np.tile([20, 25], (28, 1)))
             with self.assertRaises(ValueError):
                 regressor.predict(image, [[-1, 0, 20, 20]])
+
+    def test_detector_and_landmarks_can_use_separate_directories(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            detector_root, landmark_root = root / 'b', root / 'c'
+            detector_root.mkdir(); landmark_root.mkdir()
+            (detector_root / 'config.json').write_text(json.dumps({
+                'step': 1, 'scale_factor': 1.5, 'nms_threshold': 0.3,
+            }), encoding='utf-8')
+            (detector_root / 'detector.json').write_text('{}', encoding='utf-8')
+            np.savez_compressed(landmark_root / 'landmark.npz',
+                                mean_shape=np.full((28, 2), .5),
+                                offsets=np.zeros((28, 2, 2, 2)),
+                                weights=np.empty((0, 113, 56)))
+            (landmark_root / 'config.json').write_text(json.dumps({
+                'model_type': 'shape_regression',
+                'landmark_order': LANDMARK_ORDER,
+            }), encoding='utf-8')
+            detector = AnimeFaceDetector(detector_root, landmark_root)
+            image = np.zeros((40, 50, 3), dtype=np.uint8)
+            with patch('src.detector.scan_image', return_value=(
+                    [{'bbox': [10, 10, 30, 30], 'score': 2.0}], [])):
+                result = detector.detect(image)
+            self.assertEqual(result[0]['score'], 2.0)
+            np.testing.assert_allclose(result[0]['landmarks'],
+                                       np.tile([20, 20], (28, 1)))
 
     def test_training_rejects_nonbinary_visibility(self):
         images = [np.zeros((20, 20), dtype=np.uint8)]

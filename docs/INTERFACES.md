@@ -23,7 +23,7 @@ load_manifest(path) 接收 UTF-8 JSON 数组，每条记录为一个标注区域
 
 - image 相对清单文件；source_id 表示原始图/页，同源裁剪不能跨 split。
 - split=train/val/test，label=1 人脸或 -1 背景。bbox 为图内整数坐标。
-- 关键点记录额外含 landmarks（28×2 有限数值数组）和 visibility（28 个 0/1）。点坐标属于原图，点序由编号说明固定。
+- 关键点记录额外含 landmarks（28×2 有限数值数组）、visibility（28 个 0/1）和 `landmark_order="hysts28-v1"`。点坐标属于原图；Fern/LBF可选 `landmark_weights`（28个0～1置信度），实际监督权重为 `visibility × landmark_weights`。
 - 老师原文用 `{x,y,visibility}` 点对象，导入时显式转换为上述内部格式，不能直接混用。
 - detection_samples 会裁剪并缩放为 24×24；训练不重新分配 split。
 - 本清单用于区域训练。正式全图评价需要每张原图的完整真值框集合，不能用一个裁剪标签代替整图真值。
@@ -62,15 +62,17 @@ python -m scripts.evaluate_detection_results --pages data/processed/manga109_det
 ## C 回归与最终接口
 
 - predict_shape(model, gray, bbox) 返回原图坐标 28×2 数组。
-- 形状按框左上角及宽高归一化；仅可见点拟合，每个点至少一个可见训练样本。
-- nme(prediction, truth, visibility, normalizer) 显式传入正归一化距离。全部不可见返回 None，汇总应剔除并记录数量。
-- AnimeFaceDetector(model_path) 接收模型目录，detect(bgr) 返回 `[{bbox,score,landmarks}]`，分数降序、原图坐标、无脸空列表、不弹窗。
+- 形状按框左上角及宽高归一化；仅可见点拟合，每个点至少一个可见训练样本。支持基础形状回归、HOG+PCA+Ridge、两者融合和 `model_type="lbf_fern"`。
+- nme(prediction, truth, visibility, normalizer) 显式传入正归一化距离。默认优先使用双眼中心距离，眼部可见点不足时回退框对角线并记录；全部不可见返回 None。
+- `LandmarkRegressor(c_model).predict(bgr, boxes)` 对给定一个或多个框回归28点；空列表返回空列表。
+- `AnimeFaceDetector(b_model, c_model)` 分开加载B检测器和C关键点模型；为兼容旧合成包，省略 `c_model` 时仍从同一目录加载。`detect(bgr)` 返回 `[{bbox,score,landmarks}]`，无脸返回空列表。
+- `scripts.evaluate_end_to_end_landmarks` 按IoU匹配检测框与人工框，报告TP/FP/FN及匹配检测的NME；漏检不进入NME但必须计入FN。
 
 ## 模型导出
 
 - detector.json：候选通道/坐标、Stage 弱树/权重/阈值、训练种子和日志。
 - landmark.npz：平均形状、采样偏移和回归矩阵，不使用 pickle。
-- config.json：格式版本、窗口、通道取整/边界、金字塔、NMS、点数和 synthetic 标记。
+- config.json：B和C各自保存配置；B含窗口、通道、金字塔、NMS与分数阈值，C含点序、模型类型、训练参数和NME规则。
 - splits.json：图像、来源、划分、标签和 bbox。真实数据版本与内容校验待补。
 - feature_definition.json：完整通道定义；config中新增feature_version、feature_definition_file、feature_definition_sha256。现有检测读取接口仍兼容，多出的配置不改变当前预测行为。
 

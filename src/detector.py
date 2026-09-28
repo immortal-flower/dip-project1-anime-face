@@ -73,12 +73,15 @@ class LandmarkRegressor:
 
 
 class AnimeFaceDetector:
-    # 加载 JSON 配置和不含 pickle 的模型数组，供后续多次推理复用。
-    def __init__(self, model_path):
+    """Run B detection and C landmarks from one or two model directories."""
+
+    def __init__(self, model_path, landmark_model_path=None):
         path = Path(model_path)
+        landmark_path = Path(landmark_model_path) if landmark_model_path else path
         self.config = json.loads((path/'config.json').read_text(encoding='utf-8'))
         self.model = json.loads((path/'detector.json').read_text(encoding='utf-8'))
-        self.landmark_regressor = LandmarkRegressor(path)
+        self.landmark_regressor = LandmarkRegressor(landmark_path)
+        self.landmark_config = self.landmark_regressor.config
         self.landmark = self.landmark_regressor.model
         self.last_scan_log = []
 
@@ -86,4 +89,14 @@ class AnimeFaceDetector:
     def detect(self, image):
         _validate_image(image)
         results, self.last_scan_log = scan_image(image, self.model, self.config)
-        return self.landmark_regressor.predict(image, results)
+        height, width = image.shape[:2]
+        clipped = []
+        for item in results:
+            value = dict(item)
+            bbox = np.asarray(value['bbox'], dtype=float)
+            bbox[[0, 2]] = np.clip(bbox[[0, 2]], 0, width)
+            bbox[[1, 3]] = np.clip(bbox[[1, 3]], 0, height)
+            if np.all(bbox[2:] > bbox[:2]):
+                value['bbox'] = bbox.tolist()
+                clipped.append(value)
+        return self.landmark_regressor.predict(image, clipped)

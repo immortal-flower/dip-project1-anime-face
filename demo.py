@@ -13,6 +13,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--image', required=True)
     parser.add_argument('--model-dir', required=True)
+    parser.add_argument('--landmark-model-dir',
+                        help='Optional C model directory; --model-dir then contains only B')
     parser.add_argument('--output', required=True)
     parser.add_argument('--boxes-json', help='Optional JSON boxes; bypasses the face detector')
     args = parser.parse_args()
@@ -20,13 +22,13 @@ def main():
     if args.boxes_json:
         raw = json.loads(Path(args.boxes_json).read_text(encoding='utf-8'))
         boxes = raw.get('faces', raw.get('boxes', [])) if isinstance(raw, dict) else raw
-        regressor = LandmarkRegressor(args.model_dir)
+        regressor = LandmarkRegressor(args.landmark_model_dir or args.model_dir)
         results = regressor.predict(image, boxes)
         scan, config, mode = [], regressor.config, 'supplied_boxes'
     else:
-        detector = AnimeFaceDetector(args.model_dir)
+        detector = AnimeFaceDetector(args.model_dir, args.landmark_model_dir)
         results = detector.detect(image)
-        scan, config, mode = detector.last_scan_log, detector.config, 'detector'
+        scan, config, mode = detector.last_scan_log, detector.config, 'detector_and_landmarks'
     canvas = image.copy()
     for item in results:
         x1, y1 = np.floor(item['bbox'][:2]).astype(int)
@@ -40,7 +42,8 @@ def main():
     write_image(args.output, canvas)
     write_json(Path(args.output).with_suffix('.json'), dict(
         synthetic=config.get('synthetic', False), mode=mode,
-        landmark_order=config.get('landmark_order'), faces=results, scan=scan))
+        landmark_order=(regressor.config if args.boxes_json else detector.landmark_config).get(
+            'landmark_order'), faces=results, scan=scan))
     print(f'Saved {len(results)} faces to {args.output}; mode={mode}; '
           f'synthetic={config.get("synthetic", False)}')
 
