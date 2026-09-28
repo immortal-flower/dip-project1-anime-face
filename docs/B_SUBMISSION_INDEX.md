@@ -8,10 +8,11 @@
 - 训练与实验入口：`scripts/train_baseline.py`、`mine_hard_negatives.py`、`review_hard_negatives.py`、`compare_cascade_models.py`
 - 最终评价与交付入口：`scripts/evaluate_page_detector.py`、`select_detection_threshold.py`、`summarize_b_results.py`、`render_detection_examples.py`、`export_b_model.py`
 - 测试：`tests/test_contracts.py`、`scripts/smoke_test.py`
-- 文档：`README.md`、`docs/INTERFACES.md`、`docs/STATUS.md`、`docs/B_WORK_LOG.md`、`docs/B_RETRAIN_COMPARISON.md`、`docs/B_FINAL_REPORT.md`、本文件
+- 文档：`README.md`、`docs/INTERFACES.md`、`docs/STATUS.md`、`docs/B_WORK_LOG.md`、`docs/B_RETRAIN_COMPARISON.md`、`docs/B_FINAL_REPORT.md`、`docs/B_TO_C_HANDOFF.md`、本文件
 - 小型机器可读证据：`docs/b_results/B_FINAL_SUMMARY.json`
+- C 可直接下载的冻结模型包：`deliverables/b-final-model.zip`、`deliverables/README.md`、`deliverables/SHA256SUMS.txt`
 
-不应把 `data/`、`models/`、`results/` 或 Manga109 原页加入公开 GitHub；这些路径已由 `.gitignore` 排除。
+不应把 `data/`、`models/`、`results/` 或 Manga109 原页加入公开 GitHub；这些路径已由 `.gitignore` 排除。`deliverables/b-final-model.zip` 是唯一经过内容检查、单独纳入版本控制的冻结模型副本，不含原图。
 
 A 的本地交接文件 `START_HERE_B_DATA.md`、`SHA256SUMS_B_DATA.json`、`交接说明.md` 明确标注为团队数据包配套材料，不随公开 GitHub 提交；B 的核验结论已写入 `B_WORK_LOG.md`。
 
