@@ -248,6 +248,115 @@ def train_cascade(
     )
 
 
+def continue_cascade(
+    model, patches, labels, val_patches, val_labels, added_stages=2,
+    rounds=10, target_recall=0.98, target_false_positive_rate=0.5,
+    sample_weights=None,
+):
+    """Append late stages while preserving every existing feature/stage exactly."""
+    if added_stages < 1 or rounds < 1:
+        raise ValueError('added_stages and rounds must be positive')
+    if not model.get('features') or not model.get('stages'):
+        raise ValueError('A fitted base cascade is required')
+    labels, val_labels = np.asarray(labels), np.asarray(val_labels)
+    if set(labels.tolist()) != {-1, 1} or set(val_labels.tolist()) != {-1, 1}:
+        raise ValueError('Train and validation must both contain +/-1 labels')
+    if sample_weights is None:
+        sample_weights = np.ones(len(labels), dtype=float)
+    else:
+        sample_weights = np.asarray(sample_weights, dtype=float)
+    if sample_weights.shape != (len(labels),) or np.any(sample_weights <= 0):
+        raise ValueError('sample_weights must be positive and aligned')
+
+    features = model['features']
+    x = np.stack([sample_features(compute_11_channels(p), features) for p in patches])
+    vx = np.stack([sample_features(compute_11_channels(p), features) for p in val_patches])
+    active, val_active = np.ones(len(labels), bool), np.ones(len(val_labels), bool)
+    for stage in model['stages']:
+        active &= stage_scores(stage, x) >= stage['threshold']
+        val_active &= stage_scores(stage, vx) >= stage['threshold']
+
+    appended, logs = [], []
+    started = time.perf_counter()
+    stop_reason = 'requested_stages_completed'
+    base_count = len(model['stages'])
+    for offset in range(added_stages):
+        exhausted = _exhaustion_reason(labels, active, val_labels, val_active)
+        if exhausted:
+            stop_reason = exhausted
+            break
+        stage_start = time.perf_counter()
+        fitted = train_stage(x[active], labels[active], rounds,
+                             initial_weights=sample_weights[active])
+        calibration = []
+        for tree_count in range(1, len(fitted['trees']) + 1):
+            prefix = dict(trees=fitted['trees'][:tree_count], threshold=0.0)
+            threshold, recall, fpr = calibrate_threshold(
+                stage_scores(prefix, vx[val_active]), val_labels[val_active],
+                target_recall,
+            )
+            candidate = dict(
+                weak_trees=tree_count, threshold=threshold, recall=recall,
+                false_positive_rate=fpr,
+                target_met=recall + 1e-12 >= target_recall and
+                fpr <= target_false_positive_rate + 1e-12,
+            )
+            calibration.append(candidate)
+            if candidate['target_met']:
+                break
+        selected = next((c for c in calibration if c['target_met']), None)
+        if selected is None:
+            selected = min(calibration, key=lambda c: (
+                c['false_positive_rate'], -c['recall'], c['weak_trees']))
+        count = selected['weak_trees']
+        stage = dict(
+            trees=fitted['trees'][:count], threshold=selected['threshold'],
+            boosting_log=fitted['boosting_log'][:count],
+            training_stop_reason=fitted['training_stop_reason'],
+            target_recall=target_recall,
+            target_false_positive_rate=target_false_positive_rate,
+            target_met=selected['target_met'],
+            selection_reason=('target_met' if selected['target_met'] else
+                              'best_available_within_limit'),
+            late_stage=True,
+        )
+        before, val_before = active.copy(), val_active.copy()
+        active &= stage_scores(stage, x) >= stage['threshold']
+        val_active &= stage_scores(stage, vx) >= stage['threshold']
+        train_stats = _stage_stats(labels, before, active)
+        val_stats = _stage_stats(val_labels, val_before, val_active)
+        logs.append(dict(
+            stage=base_count + offset, frozen_early_stages=base_count,
+            weak_trees_selected=count, weak_trees_fitted=len(fitted['trees']),
+            threshold=stage['threshold'], target_recall=target_recall,
+            target_false_positive_rate=target_false_positive_rate,
+            target_met=selected['target_met'],
+            selection_reason=stage['selection_reason'], train=train_stats,
+            validation=val_stats, calibration=calibration,
+            seconds=time.perf_counter() - stage_start,
+            train_input=train_stats['input_total'], train_pass=train_stats['pass_total'],
+            val_input=val_stats['input_total'], val_pass=val_stats['pass_total'],
+        ))
+        appended.append(stage)
+        if (offset + 1 < added_stages and
+                train_stats['rejected_negative'] == 0 and
+                val_stats['rejected_negative'] == 0):
+            stop_reason = 'no_negative_reduction'
+            break
+
+    result = dict(model)
+    result['stages'] = list(model['stages']) + appended
+    result['training_log'] = list(model.get('training_log', [])) + logs
+    result['continuation_summary'] = dict(
+        frozen_early_stages=base_count, requested_added_stages=added_stages,
+        added_stages=len(appended), stop_reason=stop_reason,
+        target_recall=target_recall,
+        target_false_positive_rate=target_false_positive_rate,
+        max_weak_trees=rounds, seconds=time.perf_counter() - started,
+    )
+    return result
+
+
 def predict_window(model, channels, x, y, collect_timing=False):
     """Evaluate one window, optionally returning feature and per-stage timings."""
     feature_start = time.perf_counter() if collect_timing else None

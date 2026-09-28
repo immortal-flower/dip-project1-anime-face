@@ -7,7 +7,7 @@ import numpy as np
 
 from .adaboost import stage_scores
 from .channels11 import compute_11_channels
-from .grouping import nms
+from .grouping import calibrate_box, nms, weighted_nms
 from .pyramid import image_pyramid
 
 
@@ -144,7 +144,21 @@ def scan_image(image, model, config):
         predictions = [item[2] for item in candidate_heap]
     else:
         predictions = [item[2] for item in sorted(candidate_heap, key=lambda item: -item[1])]
-    kept = nms(predictions, config['nms_threshold'])
+    nms_method = config.get('nms_method', 'hard')
+    if nms_method == 'hard':
+        kept = nms(predictions, config['nms_threshold'])
+    elif nms_method == 'weighted':
+        kept = weighted_nms(
+            predictions, config['nms_threshold'],
+            min_support=config.get('min_box_support', 1),
+        )
+    else:
+        raise ValueError("nms_method must be 'hard' or 'weighted'")
+    calibration = config.get('box_calibration')
+    if calibration is not None:
+        for item in kept:
+            item['bbox_raw'] = list(item['bbox'])
+            item['bbox'] = calibrate_box(item['bbox'], calibration, image.shape)
     detections_before_score_filter = len(kept)
     score_threshold = config.get('score_threshold')
     if score_threshold is not None:
@@ -160,5 +174,8 @@ def scan_image(image, model, config):
             detections_after_score_filter=len(kept),
             pre_nms_limit=pre_nms_limit,
             score_threshold=score_threshold,
+            nms_method=nms_method,
+            min_box_support=config.get('min_box_support', 1),
+            box_calibration=calibration,
         )
     return kept, logs

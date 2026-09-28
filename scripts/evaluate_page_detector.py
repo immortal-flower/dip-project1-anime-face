@@ -43,6 +43,7 @@ def evaluate_pages(
     step=12, scale_factor=1.5, nms_threshold=0.3,
     pre_nms_limit=500, iou_threshold=0.5, scan_batch_size=4096,
     score_threshold=None,
+    nms_method='hard', min_box_support=1, box_calibration=None,
 ):
     pages_path, model_dir, output = Path(pages_path), Path(model_dir), Path(output)
     pages = json.loads(pages_path.read_text(encoding='utf-8'))
@@ -61,7 +62,10 @@ def evaluate_pages(
     config.update(
         step=step, scale_factor=scale_factor, nms_threshold=nms_threshold,
         pre_nms_limit=pre_nms_limit, scan_batch_size=scan_batch_size,
+        nms_method=nms_method, min_box_support=min_box_support,
     )
+    if box_calibration is not None:
+        config['box_calibration'] = box_calibration
     if score_threshold is not None:
         config['score_threshold'] = score_threshold
     effective_score_threshold = config.get('score_threshold')
@@ -109,6 +113,8 @@ def evaluate_pages(
             nms_threshold=nms_threshold, pre_nms_limit=pre_nms_limit,
             scan_batch_size=scan_batch_size,
             score_threshold=effective_score_threshold,
+            nms_method=nms_method, min_box_support=min_box_support,
+            box_calibration=box_calibration,
         ),
         iou_threshold=iou_threshold,
         metrics=evaluate_dataset(selected, predictions, iou_threshold),
@@ -134,14 +140,30 @@ def main():
     parser.add_argument('--iou-threshold', type=float, default=0.5)
     parser.add_argument('--scan-batch-size', type=int, default=4096)
     parser.add_argument('--score-threshold', type=float)
+    parser.add_argument('--nms-method', choices=('hard', 'weighted'), default='hard')
+    parser.add_argument('--min-box-support', type=int, default=1)
+    parser.add_argument('--box-dx', type=float)
+    parser.add_argument('--box-dy', type=float)
+    parser.add_argument('--box-scale-x', type=float)
+    parser.add_argument('--box-scale-y', type=float)
     args = parser.parse_args()
     if args.max_pages < 1:
         parser.error('--max-pages must be positive')
+    box_values = (args.box_dx, args.box_dy, args.box_scale_x, args.box_scale_y)
+    calibration = None
+    if any(value is not None for value in box_values):
+        calibration = dict(
+            dx=0.0 if args.box_dx is None else args.box_dx,
+            dy=0.0 if args.box_dy is None else args.box_dy,
+            scale_x=1.0 if args.box_scale_x is None else args.box_scale_x,
+            scale_y=1.0 if args.box_scale_y is None else args.box_scale_y,
+        )
     result = evaluate_pages(
         args.pages, args.model_dir, args.output, args.split, args.max_pages,
         args.step, args.scale_factor, args.nms_threshold,
         args.pre_nms_limit, args.iou_threshold, args.scan_batch_size,
         args.score_threshold,
+        args.nms_method, args.min_box_support, calibration,
     )
     print(json.dumps(result['metrics'], ensure_ascii=False))
 

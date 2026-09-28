@@ -1,4 +1,4 @@
-"""Mine detector false positives from training manga pages only."""
+"""Mine detector false positives from train/validation pages, never test."""
 import argparse
 import hashlib
 import json
@@ -74,10 +74,10 @@ def _validate_pages(rows):
                 raise ValueError(f'Page row {index} contains an invalid xyxy bbox')
 
 
-def _preflight_train_pages(pages, pages_path):
+def _preflight_pages(pages, pages_path, split):
     prepared, missing = [], []
     for page in pages:
-        if page['split'] != 'train':
+        if page['split'] != split:
             continue
         image_path = (Path(pages_path).parent / page['image']).resolve()
         if not image_path.is_file():
@@ -85,11 +85,11 @@ def _preflight_train_pages(pages, pages_path):
         else:
             prepared.append((page, image_path))
     if not prepared and not missing:
-        raise ValueError('pages.json contains no training pages')
+        raise ValueError(f'pages.json contains no {split} pages')
     if missing:
         example = missing[0]
         raise FileNotFoundError(
-            f'{len(missing)} training page image(s) are missing; first: {example}. '
+            f'{len(missing)} {split} page image(s) are missing; first: {example}. '
             'Install the full Manga109 image tree referenced by pages.json before mining.'
         )
     return prepared
@@ -181,8 +181,11 @@ def mine_hard_negatives(
     max_pages=None,
     page_selection='sequential',
     skip_mined_pages=False,
+    split='train',
 ):
-    """Scan train pages and export non-face detections as 24x24 negatives."""
+    """Scan train/validation pages; test mining is forbidden by construction."""
+    if split not in ('train', 'val'):
+        raise ValueError("Hard-negative mining split must be 'train' or 'val'")
     if not 0 <= max_face_iou <= 1:
         raise ValueError('max_face_iou must be in [0, 1]')
     if max_per_page < 1 or max_total < 1 or mining_round < 1 or gallery_size < 0:
@@ -198,7 +201,7 @@ def mine_hard_negatives(
     page_rows = _load_json_list(pages, 'pages.json')
     _validate_manifest_rows(base_rows)
     _validate_pages(page_rows)
-    train_pages = _preflight_train_pages(page_rows, pages)
+    train_pages = _preflight_pages(page_rows, pages, split)
     train_pages_available = len(train_pages)
     previously_mined_pages = {
         row['page_id'] for row in base_rows
@@ -221,6 +224,9 @@ def mine_hard_negatives(
     model = json.loads(detector_path.read_text(encoding='utf-8'))
     config = json.loads(config_path.read_text(encoding='utf-8'))
     scan_config = dict(config)
+    # Mining threshold is an explicit scan override; otherwise a deployment
+    # threshold stored in config would silently hide useful hard negatives.
+    scan_config['score_threshold'] = score_threshold
     if step is not None:
         scan_config['step'] = step
     if scale_factor is not None:
@@ -288,7 +294,7 @@ def mine_hard_negatives(
                 image=f'images/{name}',
                 source_id=page['source_id'],
                 page_id=page['page_id'],
-                split='train',
+                split=split,
                 label=-1,
                 bbox=[0, 0, 24, 24],
                 hard_negative=True,
@@ -319,7 +325,8 @@ def mine_hard_negatives(
     gallery_file = _write_gallery(output / 'gallery.png', gallery)
     summary = dict(
         schema_version=1,
-        train_only=True,
+        train_only=split == 'train',
+        split=split,
         mining_round=mining_round,
         source_manifest=str(manifest.resolve()),
         source_manifest_sha256=_sha256(manifest),
@@ -379,6 +386,7 @@ def main():
         default='sequential',
     )
     parser.add_argument('--skip-mined-pages', action='store_true')
+    parser.add_argument('--split', choices=('train', 'val'), default='train')
     args = parser.parse_args()
     try:
         summary = mine_hard_negatives(
@@ -391,10 +399,11 @@ def main():
             pre_nms_limit=args.pre_nms_limit, max_pages=args.max_pages,
             page_selection=args.page_selection,
             skip_mined_pages=args.skip_mined_pages,
+            split=args.split,
         )
     except (FileNotFoundError, ValueError) as error:
         parser.exit(2, f'ERROR: {error}\n')
-    print(f'Mined {summary["mined"]} negatives from {summary["scanned_pages"]} train pages')
+    print(f'Mined {summary["mined"]} negatives from {summary["scanned_pages"]} {args.split} pages')
 
 
 if __name__ == '__main__':

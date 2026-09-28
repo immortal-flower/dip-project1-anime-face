@@ -1,5 +1,7 @@
 # B → C 检测器交接说明
 
+> 2026-09-28 更新：新增 `deliverables/B_ENHANCED_MODEL.zip`。该 v2 模型在 Manga109 108 页上 Recall 从 4.83% 提升到 17.28%，但在用户批准局部框的 C-38 上由 15.79% 降到 7.89%。因此 C 若追求当前 AnimeFace 端到端效果，应继续保留原模型；v2 主要用于 Manga109 实验与后续跨域研究。完整对比见 `docs/B_OPTIMIZATION_V2_REPORT.md`。
+
 更新日期：2026-09-28
 
 B 的提交：[`feature/detection`](https://github.com/immortal-flower/dip-project1-anime-face/tree/feature/detection)

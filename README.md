@@ -12,6 +12,7 @@
 - [B 工作记录](docs/B_WORK_LOG.md)：Cascade、困难负样本挖掘、视觉复核与复现命令。
 - [B 困难负样本重训对比](docs/B_RETRAIN_COMPARISON.md)：同参数重训的逐 Stage 条件/累计误报率及负结果结论。
 - [B 最终实验报告](docs/B_FINAL_REPORT.md)：训练、困难负样本、消融、完整 test 指标和局限。
+- [B 召回率优化与冻结测试 v2](docs/B_OPTIMIZATION_V2_REPORT.md)：严格 train/val/test 隔离、后期 Stage、加权 NMS、框校准及 108+38 最终结果。
 - [B 提交与参考目录](docs/B_SUBMISSION_INDEX.md)：GitHub 文件、本地模型/结果和复现入口。
 - [B → C 检测器交接说明](docs/B_TO_C_HANDOFF.md)：冻结检测器、关键点模型接入方式、评价协议和 C 后续清单；完整模型包见 [`deliverables/b-final-model.zip`](deliverables/b-final-model.zip)。
 - [B–C 端到端评价反馈](docs/BC_END_TO_END_FEEDBACK.md)：38 张 AnimeFace 的 oracle/detected NME、5.26% 端到端成功率、框定义差异及后续 validation 诊断顺序。
@@ -99,7 +100,7 @@ python -m scripts.evaluate_page_detector \
   --score-threshold 13.853865092499843
 ```
 
-困难负样本脚本只扫描 `pages.json` 的 train 页，排除与已标注脸框重叠的检测，并输出候选图、增强清单、至少六例可视化画廊和逐页日志。复核脚本生成候选裁剪与原页上下文对照页；决定文件必须逐项覆盖，只有 `accepted` 项能写入最终增强清单。A 的阶段交接包只含 24×24 区域样本及原页索引；本机已另外补齐并验证 `data/Manga109_released_2026_05_21`。其他环境缺少原页时，脚本会在写输出前明确报错，不能用区域裁剪冒充整页挖掘。整页评价保存清单/模型 SHA256、逐页预测、扫描日志和 P/R/F1；最终 test 已覆盖 108/108 页且遗漏列表为空。真实模型效果有限，完整指标和局限见 [B 最终实验报告](docs/B_FINAL_REPORT.md)。
+困难负样本脚本只允许扫描 `pages.json` 的 train 或 val 页，显式拒绝 test；train 候选可用于续训，val 候选只能用于校准和选择。脚本排除与已标注脸框重叠的检测，并输出候选图、增强清单、可视化画廊和逐页日志。复核脚本生成候选裁剪与原页上下文对照页；决定文件必须逐项覆盖，只有 `accepted` 项能写入增强清单。追加后期 Stage、加权 NMS、候选支持复验和框校准的完整方法与结果见 [B 召回率优化与冻结测试 v2](docs/B_OPTIMIZATION_V2_REPORT.md)。
 
 ## 实际代码框架
 
