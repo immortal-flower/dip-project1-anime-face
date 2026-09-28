@@ -13,7 +13,8 @@
 - [B 困难负样本重训对比](docs/B_RETRAIN_COMPARISON.md)：同参数重训的逐 Stage 条件/累计误报率及负结果结论。
 - [B 最终实验报告](docs/B_FINAL_REPORT.md)：训练、困难负样本、消融、完整 test 指标和局限。
 - [B 提交与参考目录](docs/B_SUBMISSION_INDEX.md)：GitHub 文件、本地模型/结果和复现入口。
-- [B+C联合运行说明](docs/BC_INTEGRATION.md)：分开加载模型、缺失文件和端到端评价命令。
+- [B+C联合运行说明](docs/BC_INTEGRATION.md)：分开加载模型、恢复冻结模型和端到端评价命令。
+- [B+C真实端到端报告](docs/BC_END_TO_END_REPORT.md)：38张固定test的检测、关键点和完整成功率。
 - [C 28点编号与修正规则](docs/LANDMARKS.md)：`hysts28-v1` 点序、左右映射和可见性规则。
 - [B → C 检测器交接说明](docs/B_TO_C_HANDOFF.md)：冻结检测器、关键点模型接入方式、评价协议和 C 后续清单；完整模型包见 [`deliverables/b-final-model.zip`](deliverables/b-final-model.zip)。
 - [C 标注接入与联合数据](docs/C_DATA_INTEGRATION.md)：256张交付、3个边界例、6660条联合候选和划分注册表。
@@ -121,7 +122,7 @@ python -m scripts.evaluate_end_to_end_landmarks `
   --output results/end-to-end/test
 ```
 
-`demo.py`输出检测框、分数、28点和扫描日志。联合评价只对IoU达到阈值的检测计算关键点NME，同时报告TP/FP/FN，防止漏检图片从关键点统计中消失。B最终test召回率只有0.0483，因此联合效果预计受检测器限制，报告时必须把“标注框NME”和“检测框端到端结果”分开。
+`demo.py`输出检测框、分数、28点和扫描日志。联合评价只对IoU达到阈值的检测计算关键点NME，同时报告TP/FP/FN，防止漏检图片从关键点统计中消失。实际38张AnimeFace test结果为TP/FP/FN=3/7/35、Recall=7.89%；3个匹配框平均NME=0.1281，完整端到端成功率（检出且NME≤0.10）为5.26%。人工真值框下的平均NME仍为0.0864；两种条件必须分开报告。详情见 [B+C真实端到端报告](docs/BC_END_TO_END_REPORT.md)。
 
 ## 实际代码框架
 

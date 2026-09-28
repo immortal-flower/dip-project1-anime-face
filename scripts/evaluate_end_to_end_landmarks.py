@@ -34,10 +34,14 @@ def evaluate(manifest, detector_model, landmark_model, output, split="test",
 
     detector = AnimeFaceDetector(detector_model, landmark_model)
     output = Path(output)
-    records, nmes, normalization_counts = [], [], Counter()
+    records, nmes, normalized_point_errors = [], [], []
+    normalization_counts = Counter()
     true_positive = false_positive = false_negative = 0
+    images_with_detections = total_detections = 0
     for index, row in enumerate(rows):
         detections = detector.detect(row["_image"])
+        images_with_detections += int(bool(detections))
+        total_detections += len(detections)
         overlaps = [iou(item["bbox"], row["bbox"]) for item in detections]
         best_index = int(np.argmax(overlaps)) if overlaps else None
         best_iou = overlaps[best_index] if best_index is not None else 0.0
@@ -51,6 +55,13 @@ def evaluate(manifest, detector_model, landmark_model, output, split="test",
             if details["nme"] is not None:
                 nmes.append(details["nme"])
                 normalization_counts[details["normalization"]] += 1
+                visible = np.asarray(row["visibility"], dtype=bool)
+                truth = np.asarray(row["landmarks"], dtype=float)
+                prediction = np.asarray(selected["landmarks"], dtype=float)
+                normalized_point_errors.extend(
+                    (np.linalg.norm(prediction[visible] - truth[visible], axis=1)
+                     / details["normalizer"]).tolist()
+                )
         else:
             false_negative += 1
             selected, details = None, None
@@ -60,6 +71,7 @@ def evaluate(manifest, detector_model, landmark_model, output, split="test",
             "best_iou": float(best_iou),
             "nme": details["nme"] if details else None,
             "normalization": details["normalization"] if details else None,
+            "visible_point_count": int(np.count_nonzero(row["visibility"])),
         })
 
         if index < preview_count:
@@ -82,6 +94,10 @@ def evaluate(manifest, detector_model, landmark_model, output, split="test",
 
     precision = true_positive / max(true_positive + false_positive, 1)
     recall = true_positive / max(true_positive + false_negative, 1)
+    pck_thresholds = (0.05, 0.10, 0.15)
+    point_errors = np.asarray(normalized_point_errors, dtype=float)
+    nme_success_threshold = 0.10
+    matched_nme_success_count = sum(value <= nme_success_threshold for value in nmes)
     result = {
         "schema_version": 1, "split": split,
         "landmark_order": LANDMARK_ORDER, "iou_threshold": iou_threshold,
@@ -90,9 +106,22 @@ def evaluate(manifest, detector_model, landmark_model, output, split="test",
         "precision": precision, "recall": recall,
         "f1": 2 * precision * recall / (precision + recall)
               if precision + recall else 0.0,
+        "images_with_detections": images_with_detections,
+        "total_detections": total_detections,
+        "matched_face_coverage": true_positive / len(rows),
         "matched_landmark_count": len(nmes),
         "matched_mean_nme": float(np.mean(nmes)) if nmes else None,
         "matched_median_nme": float(np.median(nmes)) if nmes else None,
+        "matched_visible_point_count": int(point_errors.size),
+        "matched_pck": {
+            f"{threshold:.2f}": float(np.mean(point_errors <= threshold))
+            if point_errors.size else None
+            for threshold in pck_thresholds
+        },
+        "nme_success_threshold": nme_success_threshold,
+        "matched_nme_success_count": matched_nme_success_count,
+        "matched_nme_success_rate": matched_nme_success_count / max(len(nmes), 1),
+        "end_to_end_nme_success_rate": matched_nme_success_count / len(rows),
         "normalization_counts": dict(normalization_counts),
         "human_ground_truth": all(row.get("reviewed_landmarks") is True for row in rows),
         "records": records,

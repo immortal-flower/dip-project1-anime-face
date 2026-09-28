@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "evaluated_at": "2026-09-28",
+  "dataset": {
+    "name": "AnimeFace human-reviewed landmarks",
+    "split": "test",
+    "sample_count": 38,
+    "image_type": "cropped face images",
+    "ground_truth_faces_per_image": 1,
+    "human_ground_truth": true
+  },
+  "protocol": {
+    "iou_threshold": 0.5,
+    "one_to_one_matching": true,
+    "landmark_metrics_on_matched_faces_only": true,
+    "nme_success_threshold": 0.1,
+    "test_time_retuning": false
+  },
+  "inputs": {
+    "b_model_package_sha256": "8000810243b1b7be69a27d6ca201a803ea87416becf6d2428f38e4885babefb1",
+    "b_detector_sha256": "9914cc517c23d1e5f9e208403917dac0cf2e40812fc5713dcd2cb283948d8486",
+    "b_config_sha256": "1a117ad6416c35d05157f07808a98ee87a0280de6e1ecb9b1dc0d11e51b9940e",
+    "c_landmark_sha256": "3d2ad9944a6972f15fbb2c22291f7aa4b31e4c48273071fc598d5a2a93f53875",
+    "manifest_sha256": "b421c252260c2a5008f2524f720e5560da8a06d913b3b9e332f5862efbcb4c9e"
+  },
+  "oracle_bbox": {
+    "matched_faces": 38,
+    "mean_nme": 0.0863525119673035,
+    "median_nme": 0.07942040675595559,
+    "pck_0_05": 0.34146,
+    "pck_0_10": 0.69035,
+    "pck_0_15": 0.86638,
+    "nme_success_count": 28,
+    "nme_success_rate": 0.73684
+  },
+  "detected_bbox": {
+    "images_with_detections": 9,
+    "total_detections": 10,
+    "tp": 3,
+    "fp": 7,
+    "fn": 35,
+    "precision": 0.3,
+    "recall": 0.07894736842105263,
+    "f1": 0.125,
+    "matched_face_coverage": 0.07894736842105263,
+    "matched_visible_point_count": 80,
+    "matched_mean_nme": 0.1281413633163533,
+    "matched_median_nme": 0.08306224532576198,
+    "matched_pck_0_05": 0.275,
+    "matched_pck_0_10": 0.55,
+    "matched_pck_0_15": 0.675,
+    "matched_nme_success_count": 2,
+    "matched_nme_success_rate": 0.6666666666666666,
+    "end_to_end_success_count": 2,
+    "end_to_end_success_rate": 0.05263157894736842
+  },
+  "matched_examples": [
+    {"test_index": 5, "image_id": "3839_2002", "iou": 1.0, "nme": 0.0693535},
+    {"test_index": 14, "image_id": "42712_2013", "iou": 0.5289256, "nme": 0.2320083},
+    {"test_index": 37, "image_id": "20149_2007", "iou": 1.0, "nme": 0.0830622}
+  ],
+  "limitations": [
+    "Detected-box landmark metrics contain only three matched faces.",
+    "This test uses AnimeFace cropped images, whereas B's final detector report uses Manga109 full pages.",
+    "Missed faces remain false negatives and are included in the end-to-end success rate."
+  ]
+}

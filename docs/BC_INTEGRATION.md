@@ -2,27 +2,32 @@
 
 ## 当前状态
 
-- B代码、实验报告和机器可读汇总已经在 `feature/detection` 完整提交。
-- C训练、人工测试、HOG融合和Fern/LBF已经在 `feature/landmarks-demo` 完整提交。
-- `integration/b-c` 从B最终分支建立，并合入C三次提交；39项测试和合成端到端流程通过。
-- GitHub按项目规则忽略 `models/` 和 `results/`。B文档所述冻结模型 `results/b-final/model/` 不在仓库，本机也未找到，因此当前只能验证接口，不能生成真实联合指标。
+- B冻结模型已随仓库保存为 `deliverables/b-final-model.zip`，模型包SHA256为 `8000810243b1b7be69a27d6ca201a803ea87416becf6d2428f38e4885babefb1`。
+- C最终模型为HOG与形状回归各50%融合的 `landmark-ensemble-human-reviewed`，人工test平均NME为0.0864。
+- 2026-09-28已在C固定的38张人工复核test图上完成真实B+C联合评价；结果见 [BC_END_TO_END_REPORT.md](BC_END_TO_END_REPORT.md)。
+- 联合评价使用AnimeFace裁剪脸图，每张图只有一个真值框。这与B的Manga109整页108页test不是同一数据分布，两组检测指标不能直接互换。
 
-## B同学需要共享的冻结模型包
+## 恢复B冻结模型
 
-直接复制B机器上的整个 `results/b-final/model/`，至少应包含：
-
-```text
-detector.json
-config.json
-feature_definition.json
-B_MODEL_MANIFEST.json
+```powershell
+Expand-Archive deliverables/b-final-model.zip results/b-final -Force
 ```
 
-收到后放到本机同名目录。不要用GitHub里的 `B_FINAL_SUMMARY.json` 代替模型；汇总文件只有指标，没有弱树参数。
+恢复后模型目录为：
+
+```text
+results/b-final/model/
+├── detector.json
+├── config.json
+├── feature_definition.json
+├── B_MODEL_MANIFEST.json
+├── splits.json
+└── landmark.npz
+```
+
+其中B包内的 `landmark.npz` 只是兼容占位，联合运行时必须用C最终关键点模型覆盖它的功能。
 
 ## C模型
-
-C最终模型目录为：
 
 ```text
 models/landmark-ensemble-human-reviewed/
@@ -49,13 +54,13 @@ python -m scripts.evaluate_end_to_end_landmarks `
   --manifest data/landmarks/corrected/manifest.json `
   --detector-model results/b-final/model `
   --landmark-model models/landmark-ensemble-human-reviewed `
-  --output results/end-to-end/test `
+  --output results/end-to-end/test-b-final-c-ensemble `
   --split test --iou-threshold 0.5
 ```
 
-指标分两层：
+评价分两层：
 
 1. 检测层报告TP、FP、FN、Precision、Recall和F1。
-2. 只有IoU达到0.5的匹配框才计算关键点NME；漏检始终计入FN，不能从总结果中删除。
+2. 只有IoU达到0.5的一对一匹配框才计算关键点NME和PCK；漏检始终计入FN。
 
-B的108页最终test Recall为0.0483，当前检测器质量较低。即使C在人工框上的NME为0.0864，真实端到端结果仍可能因大量漏检和框偏移明显下降；报告必须分别展示人工框结果和检测框结果。
+本次38图结果为TP/FP/FN=3/7/35，Recall=7.89%；3个匹配框的平均NME为0.1281，完整端到端成功率（检出且NME≤0.10）为5.26%。这说明当前联合系统的主要瓶颈是检测漏检，而不是接口没有接通。
