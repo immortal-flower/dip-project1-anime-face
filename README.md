@@ -2,7 +2,7 @@
 
 数字图像处理项目一：基于特征工程的动漫人脸检测与 28 点关键点回归。
 
-三位同学平等协作，先运行共同基础，再各自完善模块。B 已完成真实三级 Cascade、困难负样本、消融和完整整页评价；C 已完成256张人工复核、基础形状回归、HOG融合、Fern/LBF和人工测试集评价。`integration/b-c` 分支已把两套代码接入统一端到端接口；B 的冻结模型包现已收录在 `deliverables/b-final-model.zip`，可恢复到本地后运行真实联合评价。
+三位同学平等协作，先运行共同基础，再各自完善模块。B 已完成真实三级 Cascade、困难负样本、消融和完整整页评价；C 已完成256张人工复核、基础形状回归、HOG融合、Fern/LBF和人工测试集评价。`integration/b-c` 分支已把两套代码接入统一端到端接口；B、C冻结模型包分别收录在 `deliverables/b-final-model.zip` 和 `deliverables/c-final-landmark-model.zip`，可恢复到本地后重跑真实联合评价。
 
 ## 阅读入口
 

@@ -3,7 +3,7 @@
 ## 当前状态
 
 - B冻结模型已随仓库保存为 `deliverables/b-final-model.zip`，模型包SHA256为 `8000810243b1b7be69a27d6ca201a803ea87416becf6d2428f38e4885babefb1`。
-- C最终模型为HOG与形状回归各50%融合的 `landmark-ensemble-human-reviewed`，人工test平均NME为0.0864。
+- C最终模型为HOG与形状回归各50%融合的 `landmark-ensemble-human-reviewed`，已保存为 `deliverables/c-final-landmark-model.zip`，模型包SHA256为 `1e97f0b773fd3f9d19ca83aa8db9cde1e15a8fb1c2a905bba8325a7577e29ba7`；人工test平均NME为0.0864。
 - 2026-09-28已在C固定的38张人工复核test图上完成真实B+C联合评价；结果见 [BC_END_TO_END_REPORT.md](BC_END_TO_END_REPORT.md)。
 - 联合评价使用AnimeFace裁剪脸图，每张图只有一个真值框。这与B的Manga109整页108页test不是同一数据分布，两组检测指标不能直接互换。
 
@@ -29,12 +29,19 @@ results/b-final/model/
 
 ## C模型
 
+```powershell
+Expand-Archive deliverables/c-final-landmark-model.zip models -Force
+```
+
 ```text
-models/landmark-ensemble-human-reviewed/
+models/model/
 ├── landmark.npz
 ├── config.json
-└── metrics.json
+├── metrics.json
+└── C_MODEL_MANIFEST.json
 ```
+
+恢复后可把 `models/model/` 改名为 `models/landmark-ensemble-human-reviewed/`，也可以直接把该目录传给 `--landmark-model-dir`。
 
 ## 单图端到端演示
 

@@ -19,6 +19,7 @@
 |---|---|
 | B冻结模型包 | `8000810243b1b7be69a27d6ca201a803ea87416becf6d2428f38e4885babefb1` |
 | B `detector.json` | `9914cc517c23d1e5f9e208403917dac0cf2e40812fc5713dcd2cb283948d8486` |
+| C冻结模型包 | `1e97f0b773fd3f9d19ca83aa8db9cde1e15a8fb1c2a905bba8325a7577e29ba7` |
 | C `landmark.npz` | `3d2ad9944a6972f15fbb2c22291f7aa4b31e4c48273071fc598d5a2a93f53875` |
 | 人工复核清单 | `b421c252260c2a5008f2524f720e5560da8a06d913b3b9e332f5862efbcb4c9e` |
 
@@ -66,4 +67,3 @@ B、C模型已经通过统一接口真实连通。人工真值框下，C模型�
 B原报告的108页Manga109整页test Recall为4.83%，本实验在38张AnimeFace裁剪图上的Recall为7.89%。两者图像类型和尺度不同，应分别报告，不能合并成同一个检测结论。
 
 机器可读摘要见 [`c_results/BC_END_TO_END_SUMMARY.json`](c_results/BC_END_TO_END_SUMMARY.json)。详细逐图JSON和预览图片保存在本地忽略目录 `results/end-to-end/test-b-final-c-ensemble-v2/`。
-
