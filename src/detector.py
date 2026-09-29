@@ -14,6 +14,40 @@ def _validate_image(image):
         raise ValueError('Expected nonempty BGR uint8 image')
 
 
+def _refine_to_edges(image, bbox, points, config):
+    """Move predictions slightly toward strong nearby lines with a spatial prior."""
+    radius_ratio = float(config.get('radius_ratio', 0.05))
+    strength = float(config.get('strength', 0.5))
+    quantile = float(config.get('quantile', 0.8))
+    if (radius_ratio <= 0 or not 0 <= strength <= 1
+            or not 0 <= quantile < 1):
+        raise ValueError('Invalid edge_refinement configuration')
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    gray = cv2.GaussianBlur(gray, (3, 3), 0)
+    gx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
+    gy = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
+    magnitude = np.hypot(gx, gy)
+    result = np.asarray(points, dtype=float).copy()
+    bbox = np.asarray(bbox, dtype=float)
+    radius = max(2, int(round(np.min(bbox[2:] - bbox[:2]) * radius_ratio)))
+    sigma = max(1.0, radius * 0.65)
+    height, width = gray.shape
+    for index, (cx, cy) in enumerate(result):
+        x1, x2 = max(0, int(np.floor(cx - radius))), min(width, int(np.ceil(cx + radius + 1)))
+        y1, y2 = max(0, int(np.floor(cy - radius))), min(height, int(np.ceil(cy + radius + 1)))
+        yy, xx = np.mgrid[y1:y2, x1:x2]
+        spatial = np.exp(-((xx - cx) ** 2 + (yy - cy) ** 2) / (2 * sigma * sigma))
+        scores = magnitude[y1:y2, x1:x2] * spatial
+        threshold = np.quantile(scores, quantile)
+        weights = np.where(scores >= threshold, scores, 0.0)
+        total = weights.sum()
+        if total > 1e-9:
+            target = np.array([(weights * xx).sum() / total,
+                               (weights * yy).sum() / total])
+            result[index] += strength * (target - result[index])
+    return result
+
+
 class LandmarkRegressor:
     """Load the course landmark model and predict points for supplied boxes."""
 
@@ -33,19 +67,29 @@ class LandmarkRegressor:
         _validate_image(image)
         model_type = self.config.get('model_type', 'shape_regression')
         if model_type not in ('shape_regression', 'hog_ridge', 'hog_shape_ensemble',
-                              'lbf_fern'):
+                              'hog_shape_lbf_ensemble', 'lbf_fern'):
             raise ValueError(f'Unsupported landmark model_type: {model_type}')
         gray = (cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-                if model_type in ('shape_regression', 'hog_shape_ensemble', 'lbf_fern')
+                if model_type in ('shape_regression', 'hog_shape_ensemble',
+                                  'hog_shape_lbf_ensemble', 'lbf_fern')
                 else None)
-        if model_type == 'hog_shape_ensemble':
-            hog_model = {key[4:]: value for key, value in self.model.items()
-                         if key.startswith('hog_')}
-            shape_model = {key[6:]: value for key, value in self.model.items()
-                           if key.startswith('shape_')}
+        if model_type in ('hog_shape_ensemble', 'hog_shape_lbf_ensemble'):
+            prefix = 'base_' if model_type == 'hog_shape_lbf_ensemble' else ''
+            hog_model = {key[len(prefix) + 4:]: value for key, value in self.model.items()
+                         if key.startswith(prefix + 'hog_')}
+            shape_model = {key[len(prefix) + 6:]: value for key, value in self.model.items()
+                           if key.startswith(prefix + 'shape_')}
             hog_weight = float(self.config.get('hog_weight', 0.5))
-            if not 0.0 <= hog_weight <= 1.0 or not hog_model or not shape_model:
+            residual_gain = float(self.config.get('residual_gain', 1.0))
+            if (not 0.0 <= hog_weight <= 1.0 or not np.isfinite(residual_gain)
+                    or residual_gain <= 0.0 or not hog_model or not shape_model):
                 raise ValueError('Invalid HOG/shape ensemble model')
+            if model_type == 'hog_shape_lbf_ensemble':
+                lbf_model = {key[4:]: value for key, value in self.model.items()
+                             if key.startswith('lbf_')}
+                lbf_weight = float(self.config.get('lbf_weight', 0.0))
+                if not 0.0 <= lbf_weight <= 1.0 or not lbf_model:
+                    raise ValueError('Invalid HOG/shape/LBF ensemble model')
         results = []
         for value in boxes:
             source = dict(value) if isinstance(value, dict) else {'bbox': value}
@@ -61,11 +105,25 @@ class LandmarkRegressor:
                 prediction = predict_hog_landmark(self.model, image, bbox)
             elif model_type == 'lbf_fern':
                 prediction = predict_lbf_landmark(self.model, gray, bbox)
-            elif model_type == 'hog_shape_ensemble':
-                prediction = (hog_weight * predict_hog_landmark(hog_model, image, bbox)
-                              + (1.0 - hog_weight) * predict_shape(shape_model, gray, bbox))
+            elif model_type in ('hog_shape_ensemble', 'hog_shape_lbf_ensemble'):
+                hog_prediction = predict_hog_landmark(hog_model, image, bbox)
+                shape_prediction = predict_shape(shape_model, gray, bbox)
+                prediction = (hog_weight * hog_prediction
+                              + (1.0 - hog_weight) * shape_prediction)
+                if residual_gain != 1.0:
+                    mean_prediction = (shape_model['mean_shape']
+                                       * (bbox[2:] - bbox[:2]) + bbox[:2])
+                    prediction = (mean_prediction
+                                  + residual_gain * (prediction - mean_prediction))
+                if model_type == 'hog_shape_lbf_ensemble':
+                    lbf_prediction = predict_lbf_landmark(lbf_model, gray, bbox)
+                    prediction = ((1.0 - lbf_weight) * prediction
+                                  + lbf_weight * lbf_prediction)
             else:
                 prediction = predict_shape(self.model, gray, bbox)
+            edge_config = self.config.get('edge_refinement')
+            if edge_config and edge_config.get('enabled', True):
+                prediction = _refine_to_edges(image, bbox, prediction, edge_config)
             item['landmarks'] = prediction.tolist()
             results.append(item)
         return results

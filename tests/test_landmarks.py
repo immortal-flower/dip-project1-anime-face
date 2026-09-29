@@ -112,6 +112,15 @@ class LandmarkTests(unittest.TestCase):
             result = LandmarkRegressor(directory).predict(images[0], boxes[:1])
             self.assertEqual(np.asarray(result[0]['landmarks']).shape, (28, 2))
             self.assertTrue(np.isfinite(result[0]['landmarks']).all())
+            baseline = np.asarray(result[0]['landmarks'])
+            (directory / 'config.json').write_text(json.dumps({
+                'model_type': 'hog_shape_ensemble', 'hog_weight': 0.5,
+                'residual_gain': 1.5, 'landmark_order': LANDMARK_ORDER,
+            }), encoding='utf-8')
+            boosted = np.asarray(
+                LandmarkRegressor(directory).predict(images[0], boxes[:1])[0]['landmarks'])
+            mean = shape['mean_shape'] * 32.0
+            self.assertTrue(np.allclose(boosted, mean + 1.5 * (baseline - mean)))
 
     def test_fern_lbf_weighted_training_and_loading(self):
         images, points, weights = [], [], []
