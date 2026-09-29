@@ -1,0 +1,617 @@
+{
+  "schema_version": 1,
+  "statement": "B final detector results; raw Manga109 images are not included",
+  "selected_model": "baseline-region-c1024",
+  "validation": {
+    "file": "results/b-final/validation-full-step6-scale1.3.json",
+    "split": "val",
+    "selection": "all",
+    "page_count": 60,
+    "metrics": {
+      "tp": 203,
+      "fp": 19079,
+      "fn": 376,
+      "precision": 0.010527953531791309,
+      "recall": 0.35060449050086356,
+      "f1": 0.020442072403202255
+    },
+    "scan_config": {
+      "step": 6,
+      "scale_factor": 1.3,
+      "nms_threshold": 0.3,
+      "pre_nms_limit": 500,
+      "scan_batch_size": 4096,
+      "score_threshold": null
+    },
+    "seconds": 1040.9853688999938,
+    "mean_page_seconds": 17.34975614833323,
+    "total_windows": 7507860,
+    "mean_windows": 125131.0,
+    "detections": 19282
+  },
+  "threshold_selection": {
+    "threshold": 13.853865092499843,
+    "detections": 735,
+    "tp": 33,
+    "fp": 702,
+    "fn": 546,
+    "precision": 0.044897959183673466,
+    "recall": 0.05699481865284974,
+    "f1": 0.05022831050228311
+  },
+  "test": {
+    "file": "results/b-final/test-full-108pages.json",
+    "split": "test",
+    "selection": "all",
+    "page_count": 108,
+    "metrics": {
+      "tp": 69,
+      "fp": 960,
+      "fn": 1360,
+      "precision": 0.06705539358600583,
+      "recall": 0.04828551434569629,
+      "f1": 0.05614320585842149
+    },
+    "scan_config": {
+      "step": 6,
+      "scale_factor": 1.3,
+      "nms_threshold": 0.3,
+      "pre_nms_limit": 500,
+      "scan_batch_size": 4096,
+      "score_threshold": 13.8538650924998
+    },
+    "seconds": 1774.1082893999992,
+    "mean_page_seconds": 16.42692860555555,
+    "total_windows": 13514148,
+    "mean_windows": 125131.0,
+    "detections": 1029
+  },
+  "identity": {
+    "pages_sha256": "627c66c57a453554ebc2bc4a6c0a97aa67177b75b3921793c6d9af0ac897cdc2",
+    "detector_sha256": "9914cc517c23d1e5f9e208403917dac0cf2e40812fc5713dcd2cb283948d8486",
+    "config_sha256": "51388ca000cbe7234cbc7e1ff7a83e79b600acf89078a5094b1033465fd385b9",
+    "missing_prediction_pages": []
+  },
+  "local_artifacts": [
+    {
+      "file": "results\\b-final\\validation-full-step6-scale1.3.json",
+      "size": 4906525,
+      "sha256": "5360a8c13ed27f4da546e2f2f1a333e3215974a231470e4363cc17c886acc07d"
+    },
+    {
+      "file": "results\\b-final\\threshold-full-validation.json",
+      "size": 4821976,
+      "sha256": "04b9f225bc4e591c523a92ce18e9d1e8ec1b8036fd1bd6ea241c301c6a5af53e"
+    },
+    {
+      "file": "results\\b-final\\test-full-108pages.json",
+      "size": 2661933,
+      "sha256": "fceffcb524f412b7fd674ab3cc7d01dbbf25cbb8b3ece65d8e6a55b5c828645c"
+    },
+    {
+      "file": "results\\b-final\\validation-step12-scale1.5.json",
+      "size": 491479,
+      "sha256": "795027c339d952bf312f4cded0b81747dde0b43b735da6cfeedbd9d8d00a93f2"
+    },
+    {
+      "file": "results\\b-final\\validation-step6-scale1.5.json",
+      "size": 452891,
+      "sha256": "a39cdc0fda2df70013fd17d2c2e6bee3c6ea0dd07e6b15bf55eb3f9ff5def6f9"
+    },
+    {
+      "file": "results\\b-final\\validation-step12-scale1.3.json",
+      "size": 534773,
+      "sha256": "76e4f3d80bb71d208813784a4080628f24c333f158896c0ea12475ceb677c93d"
+    },
+    {
+      "file": "results\\b-final\\validation-step6-scale1.3.json",
+      "size": 493877,
+      "sha256": "d965021d39a8668ae5cc5ec00002297bc28a98c51a03b67b970cf7cb407ad969"
+    }
+  ],
+  "stage_totals": [
+    {
+      "stage": 0,
+      "evaluated": 13514148,
+      "passed": 4202378,
+      "rejected": 9311770,
+      "seconds": 589.7716015998449,
+      "conditional_pass_rate": 0.310961371741674,
+      "mean_microseconds_per_evaluation": 43.64104948383315
+    },
+    {
+      "stage": 1,
+      "evaluated": 4202378,
+      "passed": 3637752,
+      "rejected": 564626,
+      "seconds": 166.77139380018343,
+      "conditional_pass_rate": 0.8656413107055101,
+      "mean_microseconds_per_evaluation": 39.68500544220045
+    },
+    {
+      "stage": 2,
+      "evaluated": 3637752,
+      "passed": 3215310,
+      "rejected": 422442,
+      "seconds": 126.38935289986694,
+      "conditional_pass_rate": 0.8838727873697823,
+      "mean_microseconds_per_evaluation": 34.743806862003495
+    }
+  ],
+  "ablations": [
+    {
+      "file": "results/b-final/validation-step12-scale1.5.json",
+      "split": "val",
+      "selection": "source-spread",
+      "page_count": 6,
+      "metrics": {
+        "tp": 11,
+        "fp": 2294,
+        "fn": 48,
+        "precision": 0.004772234273318872,
+        "recall": 0.1864406779661017,
+        "f1": 0.009306260575296108
+      },
+      "scan_config": {
+        "step": 12,
+        "scale_factor": 1.5,
+        "nms_threshold": 0.3,
+        "pre_nms_limit": 500,
+        "scan_batch_size": 4096,
+        "score_threshold": null
+      },
+      "seconds": 32.781646899995394,
+      "mean_page_seconds": 5.463607816665899,
+      "total_windows": 138954,
+      "mean_windows": 23159.0,
+      "detections": 2305
+    },
+    {
+      "file": "results/b-final/validation-step6-scale1.5.json",
+      "split": "val",
+      "selection": "source-spread",
+      "page_count": 6,
+      "metrics": {
+        "tp": 20,
+        "fp": 2050,
+        "fn": 39,
+        "precision": 0.00966183574879227,
+        "recall": 0.3389830508474576,
+        "f1": 0.018788163457022077
+      },
+      "scan_config": {
+        "step": 6,
+        "scale_factor": 1.5,
+        "nms_threshold": 0.3,
+        "pre_nms_limit": 500,
+        "scan_batch_size": 4096,
+        "score_threshold": null
+      },
+      "seconds": 78.69261410000036,
+      "mean_page_seconds": 13.115435683333393,
+      "total_windows": 552708,
+      "mean_windows": 92118.0,
+      "detections": 2070
+    },
+    {
+      "file": "results/b-final/validation-step12-scale1.3.json",
+      "split": "val",
+      "selection": "source-spread",
+      "page_count": 6,
+      "metrics": {
+        "tp": 24,
+        "fp": 2139,
+        "fn": 35,
+        "precision": 0.011095700416088766,
+        "recall": 0.4067796610169492,
+        "f1": 0.021602160216021602
+      },
+      "scan_config": {
+        "step": 12,
+        "scale_factor": 1.3,
+        "nms_threshold": 0.3,
+        "pre_nms_limit": 500,
+        "scan_batch_size": 4096,
+        "score_threshold": null
+      },
+      "seconds": 39.02299399999902,
+      "mean_page_seconds": 6.503832333333169,
+      "total_windows": 189018,
+      "mean_windows": 31503.0,
+      "detections": 2163
+    },
+    {
+      "file": "results/b-final/validation-step6-scale1.3.json",
+      "split": "val",
+      "selection": "source-spread",
+      "page_count": 6,
+      "metrics": {
+        "tp": 22,
+        "fp": 1920,
+        "fn": 37,
+        "precision": 0.01132852729145211,
+        "recall": 0.3728813559322034,
+        "f1": 0.021989005497251374
+      },
+      "scan_config": {
+        "step": 6,
+        "scale_factor": 1.3,
+        "nms_threshold": 0.3,
+        "pre_nms_limit": 500,
+        "scan_batch_size": 4096,
+        "score_threshold": null
+      },
+      "seconds": 99.18509330000234,
+      "mean_page_seconds": 16.53084888333372,
+      "total_windows": 750786,
+      "mean_windows": 125131.0,
+      "detections": 1942
+    }
+  ],
+  "source_metrics": [
+    {
+      "source_id": "manga109:SaladDays",
+      "pages": 12,
+      "tp": 13,
+      "fp": 156,
+      "fn": 90,
+      "precision": 0.07692307692307693,
+      "recall": 0.1262135922330097,
+      "f1": 0.09558823529411765
+    },
+    {
+      "source_id": "manga109:YoumaKourin",
+      "pages": 6,
+      "tp": 1,
+      "fp": 119,
+      "fn": 62,
+      "precision": 0.008333333333333333,
+      "recall": 0.015873015873015872,
+      "f1": 0.01092896174863388
+    },
+    {
+      "source_id": "manga109:DollGun",
+      "pages": 6,
+      "tp": 5,
+      "fp": 116,
+      "fn": 77,
+      "precision": 0.04132231404958678,
+      "recall": 0.06097560975609756,
+      "f1": 0.04926108374384236
+    },
+    {
+      "source_id": "manga109:MoeruOnisan",
+      "pages": 12,
+      "tp": 16,
+      "fp": 115,
+      "fn": 357,
+      "precision": 0.12213740458015267,
+      "recall": 0.04289544235924933,
+      "f1": 0.06349206349206349
+    },
+    {
+      "source_id": "manga109:UltraEleven",
+      "pages": 6,
+      "tp": 7,
+      "fp": 66,
+      "fn": 111,
+      "precision": 0.0958904109589041,
+      "recall": 0.059322033898305086,
+      "f1": 0.07329842931937172
+    },
+    {
+      "source_id": "manga109:Count3DeKimeteAgeru",
+      "pages": 6,
+      "tp": 6,
+      "fp": 65,
+      "fn": 49,
+      "precision": 0.08450704225352113,
+      "recall": 0.10909090909090909,
+      "f1": 0.09523809523809523
+    },
+    {
+      "source_id": "manga109:BurariTessenTorimonocho",
+      "pages": 6,
+      "tp": 4,
+      "fp": 42,
+      "fn": 67,
+      "precision": 0.08695652173913043,
+      "recall": 0.056338028169014086,
+      "f1": 0.06837606837606837
+    },
+    {
+      "source_id": "manga109:Joouari",
+      "pages": 6,
+      "tp": 0,
+      "fp": 42,
+      "fn": 44,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    {
+      "source_id": "manga109:TetsuSan",
+      "pages": 6,
+      "tp": 4,
+      "fp": 42,
+      "fn": 145,
+      "precision": 0.08695652173913043,
+      "recall": 0.026845637583892617,
+      "f1": 0.041025641025641026
+    },
+    {
+      "source_id": "manga109:HinagikuKenzan",
+      "pages": 6,
+      "tp": 8,
+      "fp": 41,
+      "fn": 39,
+      "precision": 0.16326530612244897,
+      "recall": 0.1702127659574468,
+      "f1": 0.16666666666666666
+    },
+    {
+      "source_id": "manga109:TaiyouNiSmash",
+      "pages": 6,
+      "tp": 1,
+      "fp": 36,
+      "fn": 49,
+      "precision": 0.02702702702702703,
+      "recall": 0.02,
+      "f1": 0.022988505747126433
+    },
+    {
+      "source_id": "manga109:EienNoWith",
+      "pages": 6,
+      "tp": 1,
+      "fp": 33,
+      "fn": 55,
+      "precision": 0.029411764705882353,
+      "recall": 0.017857142857142856,
+      "f1": 0.022222222222222223
+    },
+    {
+      "source_id": "manga109:PsychoStaff",
+      "pages": 6,
+      "tp": 2,
+      "fp": 27,
+      "fn": 63,
+      "precision": 0.06896551724137931,
+      "recall": 0.03076923076923077,
+      "f1": 0.04255319148936171
+    },
+    {
+      "source_id": "manga109:HealingPlanet",
+      "pages": 6,
+      "tp": 1,
+      "fp": 22,
+      "fn": 42,
+      "precision": 0.043478260869565216,
+      "recall": 0.023255813953488372,
+      "f1": 0.030303030303030304
+    },
+    {
+      "source_id": "manga109:AosugiruHaru",
+      "pages": 6,
+      "tp": 0,
+      "fp": 21,
+      "fn": 36,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    {
+      "source_id": "manga109:Akuhamu",
+      "pages": 6,
+      "tp": 0,
+      "fp": 17,
+      "fn": 74,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    }
+  ],
+  "highest_false_positive_pages": [
+    {
+      "page_id": "manga109:YoumaKourin:040",
+      "source_id": "manga109:YoumaKourin",
+      "tp": 0,
+      "fp": 46,
+      "fn": 8,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    {
+      "page_id": "manga109:DollGun:025",
+      "source_id": "manga109:DollGun",
+      "tp": 1,
+      "fp": 29,
+      "fn": 23,
+      "precision": 0.03333333333333333,
+      "recall": 0.041666666666666664,
+      "f1": 0.037037037037037035
+    },
+    {
+      "page_id": "manga109:DollGun:084",
+      "source_id": "manga109:DollGun",
+      "tp": 1,
+      "fp": 29,
+      "fn": 20,
+      "precision": 0.03333333333333333,
+      "recall": 0.047619047619047616,
+      "f1": 0.0392156862745098
+    },
+    {
+      "page_id": "manga109:YoumaKourin:102",
+      "source_id": "manga109:YoumaKourin",
+      "tp": 0,
+      "fp": 27,
+      "fn": 10,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    {
+      "page_id": "manga109:DollGun:002",
+      "source_id": "manga109:DollGun",
+      "tp": 0,
+      "fp": 23,
+      "fn": 7,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    {
+      "page_id": "manga109:MoeruOnisan_vol01:014",
+      "source_id": "manga109:MoeruOnisan",
+      "tp": 4,
+      "fp": 23,
+      "fn": 25,
+      "precision": 0.14814814814814814,
+      "recall": 0.13793103448275862,
+      "f1": 0.14285714285714285
+    },
+    {
+      "page_id": "manga109:SaladDays_vol18:002",
+      "source_id": "manga109:SaladDays",
+      "tp": 1,
+      "fp": 18,
+      "fn": 8,
+      "precision": 0.05263157894736842,
+      "recall": 0.1111111111111111,
+      "f1": 0.07142857142857142
+    },
+    {
+      "page_id": "manga109:YoumaKourin:099",
+      "source_id": "manga109:YoumaKourin",
+      "tp": 0,
+      "fp": 18,
+      "fn": 15,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    {
+      "page_id": "manga109:SaladDays_vol01:089",
+      "source_id": "manga109:SaladDays",
+      "tp": 1,
+      "fp": 17,
+      "fn": 4,
+      "precision": 0.05555555555555555,
+      "recall": 0.2,
+      "f1": 0.08695652173913045
+    },
+    {
+      "page_id": "manga109:DollGun:045",
+      "source_id": "manga109:DollGun",
+      "tp": 2,
+      "fp": 16,
+      "fn": 11,
+      "precision": 0.1111111111111111,
+      "recall": 0.15384615384615385,
+      "f1": 0.12903225806451615
+    }
+  ],
+  "highest_true_positive_pages": [
+    {
+      "page_id": "manga109:MoeruOnisan_vol01:014",
+      "source_id": "manga109:MoeruOnisan",
+      "tp": 4,
+      "fp": 23,
+      "fn": 25,
+      "precision": 0.14814814814814814,
+      "recall": 0.13793103448275862,
+      "f1": 0.14285714285714285
+    },
+    {
+      "page_id": "manga109:HinagikuKenzan:059",
+      "source_id": "manga109:HinagikuKenzan",
+      "tp": 3,
+      "fp": 6,
+      "fn": 6,
+      "precision": 0.3333333333333333,
+      "recall": 0.3333333333333333,
+      "f1": 0.3333333333333333
+    },
+    {
+      "page_id": "manga109:MoeruOnisan_vol01:068",
+      "source_id": "manga109:MoeruOnisan",
+      "tp": 3,
+      "fp": 16,
+      "fn": 37,
+      "precision": 0.15789473684210525,
+      "recall": 0.075,
+      "f1": 0.10169491525423728
+    },
+    {
+      "page_id": "manga109:MoeruOnisan_vol01:085",
+      "source_id": "manga109:MoeruOnisan",
+      "tp": 3,
+      "fp": 9,
+      "fn": 29,
+      "precision": 0.25,
+      "recall": 0.09375,
+      "f1": 0.13636363636363635
+    },
+    {
+      "page_id": "manga109:UltraEleven:075",
+      "source_id": "manga109:UltraEleven",
+      "tp": 3,
+      "fp": 10,
+      "fn": 26,
+      "precision": 0.23076923076923078,
+      "recall": 0.10344827586206896,
+      "f1": 0.14285714285714288
+    },
+    {
+      "page_id": "manga109:Count3DeKimeteAgeru:035",
+      "source_id": "manga109:Count3DeKimeteAgeru",
+      "tp": 2,
+      "fp": 8,
+      "fn": 12,
+      "precision": 0.2,
+      "recall": 0.14285714285714285,
+      "f1": 0.16666666666666666
+    },
+    {
+      "page_id": "manga109:Count3DeKimeteAgeru:068",
+      "source_id": "manga109:Count3DeKimeteAgeru",
+      "tp": 2,
+      "fp": 9,
+      "fn": 9,
+      "precision": 0.18181818181818182,
+      "recall": 0.18181818181818182,
+      "f1": 0.18181818181818182
+    },
+    {
+      "page_id": "manga109:DollGun:045",
+      "source_id": "manga109:DollGun",
+      "tp": 2,
+      "fp": 16,
+      "fn": 11,
+      "precision": 0.1111111111111111,
+      "recall": 0.15384615384615385,
+      "f1": 0.12903225806451615
+    },
+    {
+      "page_id": "manga109:HinagikuKenzan:049",
+      "source_id": "manga109:HinagikuKenzan",
+      "tp": 2,
+      "fp": 12,
+      "fn": 2,
+      "precision": 0.14285714285714285,
+      "recall": 0.5,
+      "f1": 0.22222222222222224
+    },
+    {
+      "page_id": "manga109:MoeruOnisan_vol19:086",
+      "source_id": "manga109:MoeruOnisan",
+      "tp": 2,
+      "fp": 4,
+      "fn": 26,
+      "precision": 0.3333333333333333,
+      "recall": 0.07142857142857142,
+      "f1": 0.11764705882352941
+    }
+  ]
+}
