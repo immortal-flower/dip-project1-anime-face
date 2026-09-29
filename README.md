@@ -42,6 +42,8 @@ python demo.py --image example.jpg --model-dir models/landmark-ensemble `
 
 当前256张数据按192/26/38固定划分，并已逐张人工确认。验证集选择HOG与形状回归各占50%的融合模型；使用190张至少含一个可见点的训练图片，验证集NME为0.0718，人工测试集平均/中位NME为0.0864/0.0794，PCK@0.10为69.03%。单独HOG、基础形状回归和进阶Fern/LBF的测试NME分别为0.0941、0.0977和0.1050。Fern/LBF已完整实现并支持连续可见性置信度，但当前小数据上过拟合，因此保留为进阶对比，正式Demo仍采用验证集更优的融合模型。评价默认使用双眼中心距离；测试集中37张采用双眼归一化，1张因眼部可见点不足回退到真值框对角线。`--allow-unreviewed` 只用于检查软件流程，不会把教师伪标签标成真实测试结果。
 
+Manga109整页实验可绕过检测器，直接读取官方XML中的人脸框，再运行C的28点模型。新增的v4模型只用AnimeFace验证集选择参数：HOG权重0.55、残差增益1.1、Fern/LBF权重0.125，并在半径为人脸短边5%的窗口中进行受限边缘修正。验证集NME由0.07182降至0.06733，保留测试集由0.08635降至0.08251。Manga109没有28点真值，因此漫画输出只能做定性检查，不能据此报告关键点NME。完整方法、命令和限制见 [Manga109真值框28点实验](docs/C_MANGA109_ORACLE_LANDMARKS.md)。
+
 ## 阅读入口
 
 - [给 Codex 的协作提示词与分工](docs/CODEX_COLLABORATION.md)
@@ -92,7 +94,7 @@ python demo.py --image data/example.jpg --model-dir models/baseline --output res
 | B | `src/depth2_tree.py`、`adaboost.py`、`cascade.py`：检测训练；`pyramid.py`、`sliding_window.py`、`grouping.py`：搜索与 NMS |
 | C | `src/landmark_schema.py`：固定点序；`shape_regression.py`：多级回归；`hog_landmark.py`：HOG+PCA+Ridge；`lbf_landmark.py`：Fern/LBF与可见点加权；`landmark_metrics.py`：双眼/框归一化NME；`detector.py`：统一接口；`demo.py`：结果图与 JSON |
 | A 的入口 | `scripts/visualize_channels.py`：原图与 11 通道拼图 |
-| C 的入口 | `scripts/prelabel_animeface.py`、`correct_landmarks.py`、`train_landmark.py`、`train_hog_landmark.py`、`train_lbf_landmark.py`、`train_landmark_ensemble.py`、`evaluate_landmark.py` |
+| C 的入口 | `scripts/prelabel_animeface.py`、`correct_landmarks.py`、`train_landmark.py`、`train_hog_landmark.py`、`train_lbf_landmark.py`、`train_landmark_ensemble.py`、`evaluate_landmark.py`、`annotate_manga109_landmarks.py` |
 | 共享入口 | `scripts/train_baseline.py`：训练两个模型；`scripts/smoke_test.py`：合成端到端检查 |
 | 共享测试 | `tests/test_contracts.py`：通道、树、指标和坐标接口验证 |
 | 协作文件 | `AGENTS.md`：Codex 阅读入口；`docs/`：老师要求、协作提示词、接口和进度 |
