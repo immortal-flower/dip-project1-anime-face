@@ -12,7 +12,12 @@ from src.grouping import nms
 from src.landmark_metrics import nme
 from src.depth2_tree import fit_tree, predict_tree
 from src.shape_regression import predict_shape
-from src.cascade import calibrate_threshold, sample_features, train_cascade
+from src.cascade import (
+    calibrate_threshold,
+    sample_features,
+    train_cascade,
+    generate_balanced_region_features,
+)
 from src.data_io import load_manifest, write_image, write_json
 from scripts.mine_hard_negatives import _select_pages, mine_hard_negatives
 from scripts.review_hard_negatives import apply_decisions
@@ -287,6 +292,92 @@ class ContractTests(unittest.TestCase):
             augmented = list(load_manifest(root/'review'/'accepted_augmented_manifest.json'))
             self.assertEqual(len(augmented), 2)
             self.assertEqual(sum(bool(row.get('hard_negative')) for row in augmented), 1)
+
+
+    def test_region_mean_difference_known_answer(self):
+        # C0 is a horizontal ramp: every 3x3 block shifted right by 3
+        # has a mean exactly 3 larger.
+        gray = np.tile(
+            np.arange(24, dtype=np.uint8),
+            (24, 1),
+        )
+        channels = compute_11_channels(gray)
+
+        feature = [[0, 0, 0, 3, 0, 3]]
+        value = sample_features(channels, feature)[0]
+
+        self.assertAlmostEqual(value, -3.0, places=6)
+
+    def test_mixed_point_and_region_batch_matches_scalar(self):
+        image = np.random.default_rng(123).integers(
+            0, 256, (48, 52), dtype=np.uint8
+        )
+        channels = compute_11_channels(image)
+
+        features = [
+            [0, 0, 0, 16, 16],
+            [3, 2, 4, 10, 11],
+            [0, 1, 2, 8, 9, 3],
+            [7, 0, 0, 12, 10, 3],
+            [10, 5, 4, 10, 11, 5],
+        ]
+
+        xs = np.array([0, 3, 9, 21])
+        ys = np.array([0, 5, 11, 19])
+
+        expected = np.stack([
+            sample_features(
+                channels,
+                features,
+                int(x),
+                int(y),
+            )
+            for x, y in zip(xs, ys)
+        ])
+
+        actual = _batch_features(
+            channels,
+            features,
+            xs,
+            ys,
+        )
+
+        np.testing.assert_allclose(
+            actual,
+            expected,
+            rtol=0,
+            atol=1e-6,
+        )
+
+    def test_region_candidate_generation_balances_all_channels(self):
+        features = generate_balanced_region_features(
+            seed=2026,
+            per_channel_per_size=4,
+            sizes=(3, 5),
+        )
+
+        # 11 channels × 4 candidates × 2 region sizes.
+        self.assertEqual(len(features), 88)
+
+        for size in (3, 5):
+            for channel in range(11):
+                selected = [
+                    feature
+                    for feature in features
+                    if feature[0] == channel
+                    and feature[5] == size
+                ]
+
+                self.assertEqual(len(selected), 4)
+
+                limit = 17 - size
+
+                for _, x1, y1, x2, y2, _ in selected:
+                    self.assertTrue(0 <= x1 <= limit)
+                    self.assertTrue(0 <= y1 <= limit)
+                    self.assertTrue(0 <= x2 <= limit)
+                    self.assertTrue(0 <= y2 <= limit)
+                    self.assertNotEqual((x1, y1), (x2, y2))
 
 
 if __name__ == '__main__':

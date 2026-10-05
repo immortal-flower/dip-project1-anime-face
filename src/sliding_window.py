@@ -7,23 +7,117 @@ import numpy as np
 
 from .adaboost import stage_scores
 from .channels11 import compute_11_channels
+from .cascade import _region_mean_maps
 from .grouping import calibrate_box, nms, weighted_nms
 from .pyramid import image_pyramid
 
 
-def _batch_features(channels, features, xs, ys):
-    """Evaluate every candidate feature for a batch of window origins."""
-    feature_array = np.asarray(features, dtype=np.intp)
-    channel_array = np.asarray(channels)
-    channel = feature_array[:, 0][None, :]
-    x1, y1, x2, y2 = (
-        feature_array[:, index][None, :] for index in range(1, 5)
-    )
+def _batch_features(channels, features, xs, ys, region_maps=None):
+    """Vectorized legacy point-pair and region-mean feature evaluation."""
     xs = np.asarray(xs, dtype=np.intp)[:, None]
     ys = np.asarray(ys, dtype=np.intp)[:, None]
-    first = channel_array[channel, ys + y1, xs + x1].astype(np.int16)
-    second = channel_array[channel, ys + y2, xs + x2].astype(np.int16)
-    return first - second
+
+    output = np.empty(
+        (len(xs), len(features)),
+        dtype=float,
+    )
+
+    point_indices = [
+        index
+        for index, feature in enumerate(features)
+        if len(feature) == 5
+    ]
+
+    if point_indices:
+        feature_array = np.asarray(
+            [features[index] for index in point_indices],
+            dtype=np.intp,
+        )
+
+        channel_array = np.asarray(channels)
+
+        channel = feature_array[:, 0][None, :]
+        x1, y1, x2, y2 = (
+            feature_array[:, index][None, :]
+            for index in range(1, 5)
+        )
+
+        first = channel_array[
+            channel,
+            ys + y1,
+            xs + x1,
+        ].astype(np.int16)
+
+        second = channel_array[
+            channel,
+            ys + y2,
+            xs + x2,
+        ].astype(np.int16)
+
+        output[:, point_indices] = first - second
+
+    region_indices = [
+        index
+        for index, feature in enumerate(features)
+        if len(feature) == 6
+    ]
+
+    if region_indices:
+        sizes = sorted({
+            int(features[index][5])
+            for index in region_indices
+        })
+
+        if region_maps is None:
+            region_maps = _region_mean_maps(channels, sizes)
+
+        for size in sizes:
+            indices = [
+                index
+                for index in region_indices
+                if int(features[index][5]) == size
+            ]
+
+            feature_array = np.asarray(
+                [features[index][:5] for index in indices],
+                dtype=np.intp,
+            )
+
+            channel = feature_array[:, 0][None, :]
+            x1, y1, x2, y2 = (
+                feature_array[:, index][None, :]
+                for index in range(1, 5)
+            )
+
+            means = region_maps[size]
+
+            first = means[
+                channel,
+                ys + y1,
+                xs + x1,
+            ]
+
+            second = means[
+                channel,
+                ys + y2,
+                xs + x2,
+            ]
+
+            output[:, indices] = first - second
+
+    unknown = [
+        len(feature)
+        for feature in features
+        if len(feature) not in (5, 6)
+    ]
+
+    if unknown:
+        raise ValueError(
+            "Feature must contain 5 values (point) "
+            "or 6 values (region)"
+        )
+
+    return output
 
 
 def _push_candidate(heap, limit, serial, detection):
@@ -54,9 +148,21 @@ def scan_image(image, model, config):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     candidate_heap, logs = [], []
     raw_candidate_count, candidate_serial = 0, 0
+
+    region_sizes = sorted({
+        int(feature[5])
+        for feature in model['features']
+        if len(feature) == 6
+    })
+
     for level, sx, sy in image_pyramid(gray, config['scale_factor']):
         start = time.perf_counter()
         channels = compute_11_channels(level)
+        region_maps = (
+            _region_mean_maps(channels, region_sizes)
+            if region_sizes
+            else None
+        )
         stage_count = len(model['stages'])
         count, passed, evaluated = 0, [0] * stage_count, [0] * stage_count
         stage_seconds = [0.0] * stage_count
@@ -73,7 +179,13 @@ def scan_image(image, model, config):
             ys = y_positions[linear // len(x_positions)]
 
             feature_start = time.perf_counter()
-            values = _batch_features(channels, model['features'], xs, ys)
+            values = _batch_features(
+                channels,
+                model['features'],
+                xs,
+                ys,
+                region_maps=region_maps,
+            )
             feature_seconds += time.perf_counter() - feature_start
             active = np.ones(len(xs), dtype=bool)
             scores = np.zeros(len(xs), dtype=float)

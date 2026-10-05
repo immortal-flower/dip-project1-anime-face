@@ -7,16 +7,166 @@ from .adaboost import stage_scores, train_stage
 from .channels11 import compute_11_channels
 
 
+def _region_mean_maps(channels, sizes):
+    """Precompute top-left anchored local means for region-difference features.
+
+    Region features only use the common 17x17 valid support of all 11 channels.
+    """
+    planes = np.asarray(channels)
+    if planes.ndim != 3 or planes.shape[0] != 11:
+        raise ValueError("Expected 11 aligned channel planes")
+
+    height, width = planes.shape[1:]
+    result = {}
+
+    for size in sorted(set(int(k) for k in sizes)):
+        if size < 1 or size > 17:
+            raise ValueError("Region size must be in [1, 17]")
+
+        means = np.zeros((11, height, width), dtype=np.float32)
+
+        for channel in range(11):
+            plane = planes[channel].astype(np.float64)
+
+            integral = np.pad(
+                plane,
+                ((1, 0), (1, 0)),
+                mode="constant",
+            ).cumsum(axis=0).cumsum(axis=1)
+
+            sums = (
+                integral[size:, size:]
+                - integral[:-size, size:]
+                - integral[size:, :-size]
+                + integral[:-size, :-size]
+            )
+
+            means[
+                channel,
+                : height - size + 1,
+                : width - size + 1,
+            ] = sums / float(size * size)
+
+        result[size] = means
+
+    return result
+
+
 def sample_features(channels, features, x=0, y=0):
-    """Evaluate candidate channel pixel differences at one window origin."""
-    return np.asarray(
-        [
-            int(channels[c][y + y1, x + x1])
-            - int(channels[c][y + y2, x + x2])
-            for c, x1, y1, x2, y2 in features
-        ],
-        dtype=float,
+    """Evaluate legacy point-pair and region-mean pixel differences.
+
+    Legacy feature:
+        [channel, x1, y1, x2, y2]
+
+    Region feature:
+        [channel, x1, y1, x2, y2, size]
+
+    Existing five-value detector models remain exactly compatible.
+    """
+    region_sizes = [
+        int(feature[5])
+        for feature in features
+        if len(feature) == 6
+    ]
+
+    region_maps = (
+        _region_mean_maps(channels, region_sizes)
+        if region_sizes
+        else {}
     )
+
+    values = []
+
+    for feature in features:
+        if len(feature) == 5:
+            c, x1, y1, x2, y2 = map(int, feature)
+
+            values.append(
+                int(channels[c][y + y1, x + x1])
+                - int(channels[c][y + y2, x + x2])
+            )
+
+        elif len(feature) == 6:
+            c, x1, y1, x2, y2, size = map(int, feature)
+
+            limit = 17 - size
+
+            if (
+                not 0 <= c < 11
+                or not 0 <= x1 <= limit
+                or not 0 <= y1 <= limit
+                or not 0 <= x2 <= limit
+                or not 0 <= y2 <= limit
+            ):
+                raise ValueError(
+                    "Region feature must stay inside common 17x17 support"
+                )
+
+            means = region_maps[size]
+
+            values.append(
+                float(means[c, y + y1, x + x1])
+                - float(means[c, y + y2, x + x2])
+            )
+
+        else:
+            raise ValueError(
+                "Feature must contain 5 values (point) "
+                "or 6 values (region)"
+            )
+
+    return np.asarray(values, dtype=float)
+
+
+def generate_balanced_region_features(
+    seed,
+    per_channel_per_size=24,
+    sizes=(3,),
+):
+    """Generate equal numbers of region differences for all 11 channels."""
+    if per_channel_per_size < 0:
+        raise ValueError("per_channel_per_size must be nonnegative")
+
+    sizes = tuple(int(k) for k in sizes)
+
+    if any(k < 1 or k > 17 for k in sizes):
+        raise ValueError("Region sizes must be in [1, 17]")
+
+    rng = np.random.default_rng(seed)
+    features = []
+
+    for size in sizes:
+        position_count = 18 - size
+
+        for channel in range(11):
+            seen = set()
+
+            while len(seen) < per_channel_per_size:
+                x1, y1, x2, y2 = map(
+                    int,
+                    rng.integers(0, position_count, 4),
+                )
+
+                # A region minus itself is identically zero and useless.
+                if (x1, y1) == (x2, y2):
+                    continue
+
+                key = (x1, y1, x2, y2)
+
+                if key in seen:
+                    continue
+
+                seen.add(key)
+                features.append([
+                    channel,
+                    x1,
+                    y1,
+                    x2,
+                    y2,
+                    size,
+                ])
+
+    return features
 
 
 def calibrate_threshold(scores, labels, target_recall):
@@ -91,6 +241,8 @@ def train_cascade(
     target_recall=1.0,
     target_false_positive_rate=0.5,
     sample_weights=None,
+    region_per_channel=0,
+    region_sizes=(),
 ):
     """Train stages until the requested count or a safe stop condition is reached."""
     if stages < 3 or candidates < 1 or rounds < 1:
@@ -113,9 +265,51 @@ def train_cascade(
         ):
             raise ValueError('sample_weights must contain one positive finite value per sample')
     rng = np.random.default_rng(seed)
-    features = np.column_stack(
-        (rng.integers(0, 11, candidates), rng.integers(0, 17, (candidates, 4)))
-    ).tolist()
+    if candidates <= 1024:
+        # Preserve the original generator exactly for existing configurations.
+        features = np.column_stack(
+            (rng.integers(0, 11, candidates),
+             rng.integers(0, 17, (candidates, 4)))
+        ).tolist()
+    else:
+        # Anchor larger pools on the original proven 1024-feature pool.
+        base_candidates = 1024
+        max_candidates = 4096
+        if candidates > max_candidates:
+            raise ValueError(
+                f'candidates={candidates} exceeds anchored pool size {max_candidates}'
+            )
+        base_features = np.column_stack(
+            (rng.integers(0, 11, base_candidates),
+             rng.integers(0, 17, (base_candidates, 4)))
+        ).tolist()
+        extra_candidates = max_candidates - base_candidates
+        extra_features = np.column_stack(
+            (rng.integers(0, 11, extra_candidates),
+             rng.integers(0, 17, (extra_candidates, 4)))
+        ).tolist()
+        features = (base_features + extra_features)[:candidates]
+    point_feature_count = len(features)
+
+    region_features = []
+    if region_per_channel:
+        if region_per_channel < 0:
+            raise ValueError("region_per_channel must be nonnegative")
+        if not region_sizes:
+            raise ValueError(
+                "region_sizes must be supplied when region_per_channel > 0"
+            )
+
+        # Use a separate deterministic seed so the proven point-pair pool
+        # remains byte-for-byte unchanged.
+        region_features = generate_balanced_region_features(
+            seed=seed + 1000003,
+            per_channel_per_size=region_per_channel,
+            sizes=region_sizes,
+        )
+
+        features = features + region_features
+
     x = np.stack(
         [sample_features(compute_11_channels(patch), features) for patch in patches]
     )
@@ -236,6 +430,11 @@ def train_cascade(
         target_false_positive_rate=target_false_positive_rate,
         max_weak_trees=rounds,
         candidates=candidates,
+        point_feature_count=point_feature_count,
+        region_feature_count=len(region_features),
+        region_per_channel=region_per_channel,
+        region_sizes=list(region_sizes),
+        total_feature_count=len(features),
         weighted_training=not np.allclose(sample_weights, sample_weights[0]),
         seconds=time.perf_counter() - cascade_start,
     )
