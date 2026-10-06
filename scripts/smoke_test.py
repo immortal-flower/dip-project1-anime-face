@@ -39,10 +39,18 @@ def main():
     write_json(root/'manifest.json', rows)
     train(root/'manifest.json', root/'models', synthetic=True)
     detector = AnimeFaceDetector(root/'models')
+    summary = detector.model['training_summary']
+    assert 1 <= summary['trained_stages'] <= summary['requested_stages']
+    assert len(detector.model['training_log']) == summary['trained_stages']
+    assert all('reused_training_pool' not in item for item in detector.model['training_log'])
+    assert detector.config['cascade_training']['target_recall'] == 1.0
     test = next(r for r in rows if r['split'] == 'test' and r['label'] == 1)
     image = read_image(root/test['image'])
     prediction = detector.detect(image)
     assert prediction, 'Expected at least one detection on the synthetic held-out fixture'
+    assert detector.last_scan_log and detector.last_scan_log[0]['stages']
+    assert all({'evaluated', 'passed', 'rejected', 'seconds'} <= set(item)
+               for item in detector.last_scan_log[0]['stages'])
     assert np.asarray(prediction[0]['landmarks']).shape == (28, 2)
     assert all(np.isfinite(p['score']) for p in prediction)
     assert detector.detect(np.zeros((12, 12, 3), dtype=np.uint8)) == []

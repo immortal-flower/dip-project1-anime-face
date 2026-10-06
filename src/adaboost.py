@@ -1,32 +1,71 @@
-# B 的基础版：让后续弱树更关注分错的样本，用加权投票组成一个阶段。
 """B: discrete AdaBoost with depth-2 weak learners."""
 import numpy as np
+
 from .depth2_tree import fit_tree, predict_tree
 
 
-# 累加本阶段所有弱树的 alpha×预测值，得到每个窗口的阶段分数。
 def stage_scores(stage, x):
-    return sum((item['alpha'] * predict_tree(item['tree'], x) for item in stage['trees']), np.zeros(len(x)))
+    """Return the weighted vote of every weak tree in one stage."""
+    return sum(
+        (item['alpha'] * predict_tree(item['tree'], x) for item in stage['trees']),
+        np.zeros(len(x)),
+    )
 
 
-# 训练若干弱树；分错的样本权重增加，下一轮会更关注这些样本。
-def train_stage(x, y, rounds=5):
-    weights = np.full(len(y), 1 / len(y))
-    trees = []
-    for _ in range(rounds):
+def train_stage(x, y, rounds=5, initial_weights=None):
+    """Fit one AdaBoost stage and retain an auditable per-round log."""
+    x = np.asarray(x)
+    y = np.asarray(y)
+    if x.ndim != 2 or len(x) != len(y) or len(y) == 0:
+        raise ValueError('x must be a non-empty 2-D array aligned with y')
+    if set(np.unique(y).tolist()) != {-1, 1}:
+        raise ValueError('AdaBoost training requires both -1 and +1 labels')
+    if rounds < 1:
+        raise ValueError('rounds must be positive')
+
+    if initial_weights is None:
+        weights = np.full(len(y), 1 / len(y))
+    else:
+        weights = np.asarray(initial_weights, dtype=float).copy()
+        if (
+            weights.shape != (len(y),)
+            or not np.isfinite(weights).all()
+            or np.any(weights < 0)
+            or weights.sum() <= 0
+        ):
+            raise ValueError('initial_weights must be finite nonnegative sample weights')
+        weights /= weights.sum()
+    trees, boosting_log = [], []
+    stop_reason = 'max_rounds_reached'
+    for round_index in range(rounds):
         tree = fit_tree(x, y, weights)
         prediction = predict_tree(tree, x)
         error = float(weights[prediction != y].sum())
-        # 错误率达到一半就没有正向投票价值；越准确的树，alpha 投票权越大。
         if error >= 0.5 - 1e-12:
+            stop_reason = 'no_useful_weak_learner'
             break
-        alpha = float(0.5 * np.log((1-error) / max(error, 1e-9)))
+
+        safe_error = min(max(error, 1e-12), 1 - 1e-12)
+        alpha = float(0.5 * np.log((1 - safe_error) / safe_error))
         trees.append(dict(tree=tree, alpha=alpha))
-        # y 与预测同号时降低权重，异号时提高权重，然后归一化。
-        weights *= np.exp(-alpha*y*prediction)
-        weights /= weights.sum()
-        if error <= 1e-9:
+        boosting_log.append(
+            dict(round=round_index, weighted_error=error, alpha=alpha)
+        )
+        if error <= 1e-12:
+            stop_reason = 'perfect_weak_learner'
             break
+
+        weights *= np.exp(-alpha * y * prediction)
+        total = float(weights.sum())
+        if not np.isfinite(total) or total <= 0:
+            raise FloatingPointError('AdaBoost sample weights became invalid')
+        weights /= total
+
     if not trees:
         raise ValueError('No useful weak learner; improve data or increase candidate features')
-    return dict(trees=trees, threshold=0.0)
+    return dict(
+        trees=trees,
+        threshold=0.0,
+        boosting_log=boosting_log,
+        training_stop_reason=stop_reason,
+    )
